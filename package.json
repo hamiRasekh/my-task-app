@@ -1,5 +1,5 @@
 {
-  "name": "my-task-app",
+  "name": "aveno",
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
@@ -29,7 +29,7 @@
     "react-native-reanimated": "^4.1.4",
     "react-native-safe-area-context": "^5.6.2",
     "react-native-vector-icons": "^10.3.0",
-    "victory-native": "^41.20.2",
+    "react-native-gifted-charts": "^1.4.65",
     "zustand": "^5.0.8"
   },
   "devDependencies": {

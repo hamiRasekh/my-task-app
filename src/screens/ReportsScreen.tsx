@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../theme';
@@ -8,12 +8,18 @@ import { DateService } from '../services/DateService';
 import { RewardService } from '../services/RewardService';
 import { CigaretteBarChart } from '../components/cigarette/CigaretteBarChart';
 import { CigaretteLineChart } from '../components/cigarette/CigaretteLineChart';
+import { BarChart } from 'react-native-gifted-charts';
 import { EmptyState } from '../components/common/EmptyState';
+import { LoadingSkeleton } from '../components/common/LoadingSkeleton';
+import { AppLogo } from '../components/common/AppLogo';
+
+const screenWidth = Dimensions.get('window').width;
 
 export const ReportsScreen: React.FC = () => {
   const [taskStats, setTaskStats] = useState<any>(null);
   const [cigaretteStats, setCigaretteStats] = useState<any>(null);
   const [cigaretteReports, setCigaretteReports] = useState<any[]>([]);
+  const [dailyTaskData, setDailyTaskData] = useState<any[]>([]);
   const [points, setPoints] = useState(0);
   const [dateRange, setDateRange] = useState<'week' | 'month' | 'custom'>('month');
   const [loading, setLoading] = useState(true);
@@ -41,16 +47,25 @@ export const ReportsScreen: React.FC = () => {
           startDate = DateService.addDays(today, -30);
       }
 
-      const [taskStatsData, cigaretteStatsData, cigaretteReportsData, pointsData] = await Promise.all([
+      const [taskStatsData, cigaretteStatsData, cigaretteReportsData, pointsData, dailyTaskCompletion] = await Promise.all([
         ReportService.getTaskStats(startDate, endDate),
         ReportService.getCigaretteStats(startDate, endDate),
         ReportService.getCigaretteReports(startDate, endDate),
         RewardService.getTotalPoints(startDate, endDate),
+        ReportService.getDailyTaskCompletion(startDate, endDate),
       ]);
+
+      // Convert daily task completion map to array
+      const dailyTaskArray = Array.from(dailyTaskCompletion.entries()).map(([date, stats]) => ({
+        date,
+        completed: stats.completed,
+        total: stats.total,
+      })).sort((a, b) => DateService.compareDates(a.date, b.date));
 
       setTaskStats(taskStatsData);
       setCigaretteStats(cigaretteStatsData);
       setCigaretteReports(cigaretteReportsData);
+      setDailyTaskData(dailyTaskArray);
       setPoints(pointsData);
     } catch (error) {
       console.error('Error loading reports:', error);
@@ -59,11 +74,18 @@ export const ReportsScreen: React.FC = () => {
     }
   };
 
+  const getTaskChartData = () => {
+    if (dailyTaskData.length === 0) return [];
+    return dailyTaskData.map((item) => item.completed);
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.content}>
-          <Text style={styles.loadingText}>در حال بارگذاری...</Text>
+          <LoadingSkeleton width="100%" height={30} marginBottom={spacing.lg} />
+          <LoadingSkeleton width="100%" height={150} marginBottom={spacing.md} />
+          <LoadingSkeleton width="100%" height={150} marginBottom={spacing.md} />
         </View>
       </SafeAreaView>
     );
@@ -72,7 +94,10 @@ export const ReportsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>گزارش‌ها</Text>
+        <View style={styles.header}>
+          <AppLogo size="medium" />
+          <Text style={styles.subtitle}>گزارش‌ها</Text>
+        </View>
 
         <View style={styles.filterContainer}>
           <TouchableOpacity
@@ -131,6 +156,40 @@ export const ReportsScreen: React.FC = () => {
                 />
               </View>
             </View>
+
+            {dailyTaskData.length > 0 && (
+              <View style={styles.chartContainer}>
+                <Text style={styles.chartTitle}>کارهای انجام شده روزانه</Text>
+                <BarChart
+                  data={getTaskChartData().map((value, index) => ({
+                    value: value,
+                    label: dailyTaskData[index] ? DateService.formatDate(dailyTaskData[index].date, 'MM/DD') : `${index + 1}`,
+                    frontColor: colors.primary,
+                    topLabelComponent: () => (
+                      <Text style={styles.topLabel}>{value}</Text>
+                    ),
+                  }))}
+                  width={screenWidth - spacing.xl * 2}
+                  height={200}
+                  barWidth={20}
+                  spacing={8}
+                  roundedTop
+                  roundedBottom
+                  hideRules
+                  xAxisThickness={1}
+                  xAxisColor={colors.border}
+                  yAxisThickness={1}
+                  yAxisColor={colors.border}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
+                  maxValue={Math.max(...dailyTaskData.map(d => d.completed), 5) + 2}
+                  noOfSections={5}
+                  yAxisLabelWidth={40}
+                  showYAxisIndices
+                  yAxisIndicesColor={colors.border}
+                  yAxisIndicesHeight={4}
+                />
+              </View>
+            )}
           </View>
         )}
 
@@ -145,33 +204,36 @@ export const ReportsScreen: React.FC = () => {
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{cigaretteStats.weekly}</Text>
-                <Text style={styles.statLabel}>هفته</Text>
+                <Text style={styles.statLabel}>هفتگی</Text>
               </View>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{cigaretteStats.monthly}</Text>
-                <Text style={styles.statLabel}>ماه</Text>
+                <Text style={styles.statLabel}>ماهانه</Text>
               </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: colors.success }]}>
-                  {cigaretteStats.streak}
-                </Text>
-                <Text style={styles.statLabel}>روز متوالی</Text>
-              </View>
-            </View>
-            <View style={styles.statsRow}>
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>{cigaretteStats.average}</Text>
                 <Text style={styles.statLabel}>میانگین</Text>
               </View>
+            </View>
+            <View style={styles.statsRow}>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{cigaretteStats.max}</Text>
-                <Text style={styles.statLabel}>حداکثر</Text>
+                <Text style={styles.statValue}>{cigaretteStats.streak}</Text>
+                <Text style={styles.statLabel}>روز پشت سر هم</Text>
               </View>
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{cigaretteStats.min}</Text>
-                <Text style={styles.statLabel}>حداقل</Text>
+                <Text style={[styles.statValue, { color: colors.primary }]}>
+                  {cigaretteStats.percentage}%
+                </Text>
+                <Text style={styles.statLabel}>درصد امروز</Text>
               </View>
             </View>
+
+            {cigaretteReports.length > 0 && (
+              <View style={styles.chartContainer}>
+                <Text style={styles.chartTitle}>روند مصرف</Text>
+                <CigaretteLineChart data={cigaretteReports} height={200} />
+              </View>
+            )}
           </View>
         )}
 
@@ -179,31 +241,11 @@ export const ReportsScreen: React.FC = () => {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>امتیازات</Text>
           <View style={styles.pointsContainer}>
+            <Ionicons name="star" size={48} color={colors.warning} />
             <Text style={styles.pointsValue}>{points}</Text>
             <Text style={styles.pointsLabel}>امتیاز کل</Text>
           </View>
         </View>
-
-        {/* Cigarette Charts */}
-        {cigaretteReports.length > 0 && (
-          <>
-            <View style={styles.chartCard}>
-              <Text style={styles.chartTitle}>مصرف هفتگی</Text>
-              <CigaretteLineChart data={cigaretteReports} height={200} />
-            </View>
-            <View style={styles.chartCard}>
-              <Text style={styles.chartTitle}>مصرف ماهانه</Text>
-              <CigaretteBarChart data={cigaretteReports} height={200} />
-            </View>
-          </>
-        )}
-
-        {!taskStats && !cigaretteStats && (
-          <EmptyState
-            title="داده‌ای برای نمایش وجود ندارد"
-            message="کارها و مصرف سیگار خود را ثبت کنید تا گزارش‌ها نمایش داده شوند"
-          />
-        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -220,26 +262,34 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
   },
-  title: {
-    fontSize: typography.fontSize.xxl,
-    fontFamily: typography.fontFamily.bold,
-    color: colors.text,
+  header: {
+    alignItems: 'center',
     marginBottom: spacing.lg,
+    paddingTop: spacing.sm,
+  },
+  subtitle: {
+    fontSize: typography.fontSize.md,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   filterContainer: {
     flexDirection: 'row',
-    marginBottom: spacing.md,
     gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   filterButton: {
     flex: 1,
-    padding: spacing.md,
-    borderRadius: 8,
+    padding: spacing.sm,
+    borderRadius: 12,
     backgroundColor: colors.surfaceVariant,
     alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
   filterButtonActive: {
     backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   filterButtonText: {
     fontSize: typography.fontSize.md,
@@ -248,6 +298,7 @@ const styles = StyleSheet.create({
   },
   filterButtonTextActive: {
     color: colors.text,
+    fontFamily: typography.fontFamily.bold,
   },
   card: {
     backgroundColor: colors.surface,
@@ -265,9 +316,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     marginBottom: spacing.md,
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
   statItem: {
     alignItems: 'center',
+    minWidth: 80,
   },
   statValue: {
     fontSize: typography.fontSize.xxl,
@@ -286,7 +340,7 @@ const styles = StyleSheet.create({
   progressLabel: {
     fontSize: typography.fontSize.sm,
     fontFamily: typography.fontFamily.medium,
-    color: colors.textSecondary,
+    color: colors.text,
     marginBottom: spacing.xs,
   },
   progressBar: {
@@ -299,39 +353,42 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 4,
   },
+  chartContainer: {
+    marginTop: spacing.md,
+    alignItems: 'center',
+  },
+  chartTitle: {
+    fontSize: typography.fontSize.md,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.text,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
   pointsContainer: {
     alignItems: 'center',
-    padding: spacing.lg,
+    padding: spacing.xl,
   },
   pointsValue: {
     fontSize: typography.fontSize.xxxl,
     fontFamily: typography.fontFamily.bold,
-    color: colors.primary,
-    marginBottom: spacing.xs,
+    color: colors.warning,
+    marginTop: spacing.sm,
   },
   pointsLabel: {
     fontSize: typography.fontSize.md,
     fontFamily: typography.fontFamily.regular,
     color: colors.textSecondary,
-  },
-  chartCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-  },
-  chartTitle: {
-    fontSize: typography.fontSize.lg,
-    fontFamily: typography.fontFamily.medium,
-    color: colors.text,
-    marginBottom: spacing.md,
-    textAlign: 'center',
+    marginTop: spacing.xs,
   },
   loadingText: {
     fontSize: typography.fontSize.md,
     fontFamily: typography.fontFamily.regular,
     color: colors.textSecondary,
     textAlign: 'center',
-    marginTop: spacing.xl,
+  },
+  topLabel: {
+    fontSize: 10,
+    color: colors.text,
+    fontFamily: typography.fontFamily.medium,
   },
 });

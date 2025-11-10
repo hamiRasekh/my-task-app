@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { VictoryChart, VictoryBar, VictoryAxis, VictoryTheme } from 'victory-native';
+import { BarChart } from 'react-native-gifted-charts';
 import { colors, typography, spacing } from '../../theme';
 import { CigaretteReport } from '../../types/cigarette.types';
 
@@ -24,9 +24,12 @@ export const CigaretteBarChart: React.FC<CigaretteBarChartProps> = ({
   }
 
   const chartData = data.map((item, index) => ({
-    x: index + 1,
-    y: item.count,
-    label: item.date,
+    value: item.count,
+    label: `${index + 1}`,
+    frontColor: item.count > item.limit ? colors.error : colors.primary,
+    topLabelComponent: () => (
+      <Text style={styles.topLabel}>{item.count}</Text>
+    ),
   }));
 
   const maxValue = Math.max(...data.map(d => d.count), 10);
@@ -34,39 +37,27 @@ export const CigaretteBarChart: React.FC<CigaretteBarChartProps> = ({
   return (
     <View style={styles.container}>
       <Text style={styles.title}>مصرف ماهانه</Text>
-      <VictoryChart
-        theme={VictoryTheme.material}
+      <BarChart
+        data={chartData}
         width={screenWidth - spacing.xl * 2}
         height={height}
-        padding={{ left: 50, right: 20, top: 20, bottom: 50 }}
-        domain={{ y: [0, maxValue + 2] }}
-      >
-        <VictoryAxis
-          style={{
-            axis: { stroke: colors.border },
-            tickLabels: { fill: colors.textSecondary, fontSize: 10 },
-            grid: { stroke: colors.border, strokeDasharray: '4 4' },
-          }}
-        />
-        <VictoryAxis
-          dependentAxis
-          style={{
-            axis: { stroke: colors.border },
-            tickLabels: { fill: colors.textSecondary, fontSize: 10 },
-            grid: { stroke: colors.border, strokeDasharray: '4 4' },
-          }}
-        />
-        <VictoryBar
-          data={chartData}
-          style={{
-            data: {
-              fill: colors.primary,
-              width: 20,
-            },
-          }}
-          cornerRadius={{ top: 4 }}
-        />
-      </VictoryChart>
+        barWidth={20}
+        spacing={8}
+        roundedTop
+        roundedBottom
+        hideRules
+        xAxisThickness={1}
+        xAxisColor={colors.border}
+        yAxisThickness={1}
+        yAxisColor={colors.border}
+        yAxisTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
+        maxValue={maxValue + 2}
+        noOfSections={5}
+        yAxisLabelWidth={40}
+        showYAxisIndices
+        yAxisIndicesColor={colors.border}
+        yAxisIndicesHeight={4}
+      />
     </View>
   );
 };
@@ -92,5 +83,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     padding: spacing.xl,
   },
+  topLabel: {
+    fontSize: 10,
+    color: colors.text,
+    fontFamily: typography.fontFamily.medium,
+  },
 });
-

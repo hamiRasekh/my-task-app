@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { VictoryPie } from 'victory-native';
+import { PieChart } from 'react-native-gifted-charts';
 import { colors, typography, spacing } from '../../theme';
 import { Cigarette } from '../../database/models/Cigarette';
 
@@ -29,50 +29,60 @@ export const CigaretteCircularChart: React.FC<CigaretteCircularChartProps> = ({
   const used = Math.min(cigarette.count, cigarette.dailyLimit);
   const overLimit = Math.max(0, cigarette.count - cigarette.dailyLimit);
 
-  const data: Array<{ x: string; y: number }> = [];
-  const colorScale: string[] = [];
+  const pieData: Array<{ value: number; color: string; label?: string }> = [];
 
   if (used > 0) {
-    data.push({ x: 'used', y: used });
-    colorScale.push(percentage > 100 ? colors.error : colors.primary);
+    pieData.push({
+      value: used,
+      color: percentage > 100 ? colors.error : colors.primary,
+      label: 'استفاده شده',
+    });
   }
   
   if (remaining > 0) {
-    data.push({ x: 'remaining', y: remaining });
-    colorScale.push(colors.surfaceVariant);
+    pieData.push({
+      value: remaining,
+      color: colors.surfaceVariant,
+      label: 'باقیمانده',
+    });
   }
   
   if (overLimit > 0) {
-    data.push({ x: 'over', y: overLimit });
-    colorScale.push(colors.error);
+    pieData.push({
+      value: overLimit,
+      color: colors.error,
+      label: 'افزوده',
+    });
   }
 
   // If no data, show empty state
-  if (data.length === 0) {
-    data.push({ x: 'empty', y: 100 });
-    colorScale.push(colors.surfaceVariant);
+  if (pieData.length === 0) {
+    pieData.push({
+      value: 100,
+      color: colors.surfaceVariant,
+    });
   }
+
+  const radius = size / 2;
+  const innerRadius = radius * 0.3;
 
   return (
     <View style={styles.container}>
       <View style={[styles.chartContainer, { width: size, height: size }]}>
-        <VictoryPie
-          data={data}
-          width={size}
-          height={size}
-          innerRadius={size * 0.3}
-          colorScale={colorScale.length > 0 ? colorScale : [colors.surfaceVariant]}
-          padAngle={2}
-          style={{
-            labels: { fill: 'transparent' },
-          }}
+        <PieChart
+          data={pieData}
+          radius={radius}
+          innerRadius={innerRadius}
+          donut
+          centerLabelComponent={() => (
+            <View style={styles.centerLabel}>
+              <Text style={styles.percentageText}>{Math.round(percentage)}%</Text>
+              <Text style={styles.labelText}>
+                {cigarette.count} / {cigarette.dailyLimit}
+              </Text>
+            </View>
+          )}
         />
-        <View style={styles.centerLabel}>
-          <Text style={styles.percentageText}>{Math.round(percentage)}%</Text>
-          <Text style={styles.labelText}>
-            {cigarette.count} / {cigarette.dailyLimit}
-          </Text>
-        </View>
       </View>
       {(used > 0 || remaining > 0 || overLimit > 0) && (
         <View style={styles.legend}>
@@ -111,7 +121,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   centerLabel: {
-    position: 'absolute',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -156,4 +165,3 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
 });
-

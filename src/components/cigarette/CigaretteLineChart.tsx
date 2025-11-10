@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { VictoryChart, VictoryLine, VictoryAxis, VictoryTheme } from 'victory-native';
+import { LineChart } from 'react-native-gifted-charts';
 import { colors, typography, spacing } from '../../theme';
 import { CigaretteReport } from '../../types/cigarette.types';
 
@@ -24,43 +24,39 @@ export const CigaretteLineChart: React.FC<CigaretteLineChartProps> = ({
   }
 
   const chartData = data.map((item, index) => ({
-    x: index + 1,
-    y: item.count,
-    label: item.date,
+    value: item.count,
+    label: `${index + 1}`,
   }));
+
+  const maxValue = Math.max(...data.map(d => d.count), 10);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>روند مصرف روزانه</Text>
-      <VictoryChart
-        theme={VictoryTheme.material}
+      <LineChart
+        data={chartData}
         width={screenWidth - spacing.xl * 2}
         height={height}
-        padding={{ left: 50, right: 20, top: 20, bottom: 50 }}
-      >
-        <VictoryAxis
-          style={{
-            axis: { stroke: colors.border },
-            tickLabels: { fill: colors.textSecondary, fontSize: 10 },
-            grid: { stroke: colors.border, strokeDasharray: '4 4' },
-          }}
-        />
-        <VictoryAxis
-          dependentAxis
-          style={{
-            axis: { stroke: colors.border },
-            tickLabels: { fill: colors.textSecondary, fontSize: 10 },
-            grid: { stroke: colors.border, strokeDasharray: '4 4' },
-          }}
-        />
-        <VictoryLine
-          data={chartData}
-          style={{
-            data: { stroke: colors.primary, strokeWidth: 2 },
-          }}
-          interpolation="natural"
-        />
-      </VictoryChart>
+        spacing={(screenWidth - spacing.xl * 2) / (data.length + 1)}
+        thickness={2}
+        color={colors.primary}
+        hideRules
+        hideYAxisText={false}
+        yAxisColor={colors.border}
+        xAxisColor={colors.border}
+        yAxisTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
+        maxValue={maxValue + 2}
+        noOfSections={5}
+        yAxisLabelWidth={40}
+        showYAxisIndices
+        yAxisIndicesColor={colors.border}
+        curved
+        areaChart
+        startFillColor={colors.primary + '40'}
+        endFillColor={colors.primary + '10'}
+        startOpacity={0.4}
+        endOpacity={0.1}
+      />
     </View>
   );
 };
@@ -87,4 +83,3 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
 });
-
