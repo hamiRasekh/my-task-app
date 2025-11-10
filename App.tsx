@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { Platform } from 'react-native';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -16,9 +17,13 @@ export default function App() {
       try {
         await CategoryRepository.initializeDefaultCategories();
         await SettingsRepository.initializeDefaultSettings();
-        await notificationService.requestPermissions();
+        // Notifications are not supported on web
+        if (Platform.OS !== 'web') {
+          await notificationService.requestPermissions();
+        }
       } catch (error) {
         console.error('Error initializing app:', error);
+        // Continue even if initialization fails (e.g., on web)
       }
     };
 

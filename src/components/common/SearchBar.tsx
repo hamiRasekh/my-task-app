@@ -4,31 +4,33 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../../theme';
 
 interface SearchBarProps {
-  value: string;
-  onChangeText: (text: string) => void;
+  searchText: string;
+  onSearchTextChange: (text: string) => void;
   placeholder?: string;
-  onClear?: () => void;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
-  value,
-  onChangeText,
+  searchText,
+  onSearchTextChange,
   placeholder = 'جستجو...',
-  onClear,
 }) => {
   return (
     <View style={styles.container}>
       <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.icon} />
       <TextInput
         style={styles.input}
-        value={value}
-        onChangeText={onChangeText}
+        value={searchText}
+        onChangeText={onSearchTextChange}
         placeholder={placeholder}
         placeholderTextColor={colors.textDisabled}
-        returnKeyType="search"
+        autoCorrect={false}
+        autoCapitalize="none"
       />
-      {value.length > 0 && (
-        <TouchableOpacity onPress={() => { onChangeText(''); onClear?.(); }} style={styles.clearButton}>
+      {searchText.length > 0 && (
+        <TouchableOpacity
+          onPress={() => onSearchTextChange('')}
+          style={styles.clearIcon}
+        >
           <Ionicons name="close-circle" size={20} color={colors.textSecondary} />
         </TouchableOpacity>
       )}
@@ -57,8 +59,8 @@ const styles = StyleSheet.create({
     color: colors.text,
     paddingVertical: spacing.sm,
   },
-  clearButton: {
-    padding: spacing.xs,
+  clearIcon: {
+    marginLeft: spacing.sm,
   },
 });
 

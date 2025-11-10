@@ -76,10 +76,28 @@ export class DateService {
    * Get Persian date with day name
    */
   static getDateWithDayName(date: string): string {
-    const [year, month, day] = date.split('/').map(Number);
-    const persianDate = new PersianDate([year, month - 1, day]);
-    const dayName = persianDate.format('dddd');
-    return `${dayName}، ${date}`;
+    try {
+      const [year, month, day] = date.split('/').map(Number);
+      const persianDate = new PersianDate([year, month - 1, day]);
+      // Try to get day name using format, if it fails use manual calculation
+      let dayName = '';
+      try {
+        dayName = persianDate.format('dddd');
+      } catch {
+        // If format doesn't work, calculate day of week manually
+        // PersianDate uses JavaScript Date internally
+        const jsDate = persianDate.toDate();
+        const dayOfWeek = jsDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+        // Convert to Persian week (Saturday = 0, Sunday = 1, ..., Friday = 6)
+        const persianDayOfWeek = (dayOfWeek + 1) % 7;
+        const dayNames = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنج‌شنبه', 'جمعه'];
+        dayName = dayNames[persianDayOfWeek] || '';
+      }
+      return dayName ? `${dayName}، ${date}` : date;
+    } catch (error) {
+      console.error('Error formatting date with day name:', error);
+      return date;
+    }
   }
 
   /**

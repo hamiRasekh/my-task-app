@@ -44,13 +44,9 @@ export class CigaretteRepository {
    */
   static async getCigaretteByDate(date: string): Promise<Cigarette | null> {
     try {
-      const cigarettes = await database
-        .get<Cigarette>('cigarettes')
-        .query()
-        .where('date', date)
-        .fetch();
-      
-      return cigarettes.length > 0 ? cigarettes[0] : null;
+      const allCigarettes = await database.get<Cigarette>('cigarettes').query().fetch();
+      const cigarette = allCigarettes.find((c) => c.date === date);
+      return cigarette || null;
     } catch (error) {
       return null;
     }

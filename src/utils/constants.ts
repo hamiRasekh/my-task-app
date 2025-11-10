@@ -1,6 +1,7 @@
 // Application constants
 
-export const APP_NAME = 'مدیریت کار و ردیابی سیگار';
+export const APP_NAME = 'Aveno';
+export const APP_NAME_PERSIAN = 'مدیریت کار و ردیابی سیگار';
 
 export const DATE_FORMAT = 'YYYY/MM/DD';
 export const TIME_FORMAT = 'HH:mm';

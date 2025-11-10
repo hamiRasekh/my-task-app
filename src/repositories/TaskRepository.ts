@@ -1,5 +1,6 @@
 import { database } from '../database/database';
 import Task from '../database/models/Task';
+import TaskCompletion from '../database/models/TaskCompletion';
 import { TaskFormData, Task as TaskType } from '../types/task.types';
 import { Priority, TaskStatus, FilterOption } from '../types/common.types';
 import { DateService } from '../services/DateService';
@@ -135,11 +136,8 @@ export class TaskRepository {
    * Get tasks for a specific date
    */
   static async getTasksByDate(date: string): Promise<Task[]> {
-    return await database
-      .get<Task>('tasks')
-      .query()
-      .where('scheduled_date', date)
-      .fetch();
+    const allTasks = await this.getAllTasks();
+    return allTasks.filter((task) => task.scheduledDate === date);
   }
 
   /**
@@ -167,6 +165,19 @@ export class TaskRepository {
   static async completeTask(taskId: string): Promise<Task> {
     return await database.write(async () => {
       const task = await database.get<Task>('tasks').find(taskId);
+      const today = DateService.getToday();
+      
+      // Create task completion record
+      await database.get('task_completions').create((completion) => {
+        completion.taskId = taskId;
+        completion.completedAt = Date.now();
+        completion.date = today;
+        completion.pointsEarned = task.rewardPoints;
+        completion.createdAt = Date.now();
+        completion.updatedAt = Date.now();
+      });
+
+      // Update task
       return await task.update((task) => {
         task.isCompleted = true;
         task.status = 'completed';

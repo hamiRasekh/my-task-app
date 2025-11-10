@@ -5,6 +5,7 @@ import { colors, typography, spacing } from '../../theme';
 import Task from '../../database/models/Task';
 import { formatPriority, formatTaskStatus } from '../../utils/formatters';
 import { DateService } from '../../services/DateService';
+import { useTaskStore } from '../../store/taskStore';
 
 interface TaskCardProps {
   task: Task;
@@ -19,6 +20,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   onComplete,
   onDelete,
 }) => {
+  const { categories } = useTaskStore();
+  const category = task.categoryId ? categories.find(c => c.id === task.categoryId) : null;
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high':
@@ -74,6 +78,13 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           <Text style={styles.description} numberOfLines={2}>
             {task.description}
           </Text>
+        )}
+
+        {category && (
+          <View style={styles.categoryBadge}>
+            <View style={[styles.categoryDot, { backgroundColor: category.color }]} />
+            <Text style={styles.categoryText}>{category.name}</Text>
+          </View>
         )}
 
         <View style={styles.footer}>
@@ -218,6 +229,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surfaceVariant,
     borderLeftWidth: 1,
     borderLeftColor: colors.border,
+  },
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.xs,
+    paddingVertical: 2,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceVariant,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
+    gap: spacing.xs,
+  },
+  categoryDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  categoryText: {
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textSecondary,
   },
 });
 

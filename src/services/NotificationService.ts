@@ -31,6 +31,12 @@ export class NotificationService {
    */
   async requestPermissions(): Promise<boolean> {
     try {
+      // Notifications are not supported on web
+      if (Platform.OS === 'web') {
+        console.warn('Notifications are not supported on web');
+        return false;
+      }
+
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
 
@@ -104,6 +110,12 @@ export class NotificationService {
     channelId: string = NOTIFICATION_CHANNELS.TASK_REMINDER
   ): Promise<string | null> {
     try {
+      // Notifications are not supported on web
+      if (Platform.OS === 'web') {
+        console.warn('Notifications are not supported on web');
+        return null;
+      }
+
       // Cancel existing notification for this task
       await this.cancelTaskNotifications(taskId);
 
@@ -138,6 +150,12 @@ export class NotificationService {
     channelId: string = NOTIFICATION_CHANNELS.TASK_REMINDER
   ): Promise<string | null> {
     try {
+      // Notifications are not supported on web
+      if (Platform.OS === 'web') {
+        console.warn('Notifications are not supported on web');
+        return null;
+      }
+
       // Convert Persian date to JavaScript Date
       const [year, month, day] = persianDate.split('/').map(Number);
       const persianDateObj = new PersianDate([year, month - 1, day]);
@@ -178,6 +196,12 @@ export class NotificationService {
     channelId: string = NOTIFICATION_CHANNELS.DEADLINE_REMINDER
   ): Promise<string | null> {
     try {
+      // Notifications are not supported on web
+      if (Platform.OS === 'web') {
+        console.warn('Notifications are not supported on web');
+        return null;
+      }
+
       const [year, month, day] = deadlineDate.split('/').map(Number);
       const persianDateObj = new PersianDate([year, month - 1, day]);
       const jsDate = persianDateObj.toDate();
@@ -221,6 +245,12 @@ export class NotificationService {
     channelId: string = NOTIFICATION_CHANNELS.DAILY_SUMMARY
   ): Promise<string | null> {
     try {
+      // Notifications are not supported on web
+      if (Platform.OS === 'web') {
+        console.warn('Notifications are not supported on web');
+        return null;
+      }
+
       const identifier = await Notifications.scheduleNotificationAsync({
         content: {
           title,

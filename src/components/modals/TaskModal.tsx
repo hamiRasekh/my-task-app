@@ -185,7 +185,7 @@ export const TaskModal: React.FC = () => {
               >
                 <Ionicons name="calendar-outline" size={20} color={colors.primary} />
                 <Text style={styles.dateTimeButtonText}>
-                  {formData.scheduledDate}
+                  {DateService.getDateWithDayName(formData.scheduledDate)}
                 </Text>
                 <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
@@ -227,6 +227,58 @@ export const TaskModal: React.FC = () => {
                   </TouchableOpacity>
                 )}
               </TouchableOpacity>
+
+              {categories.length > 0 && (
+                <>
+                  <Text style={styles.label}>دسته‌بندی (اختیاری)</Text>
+                  <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.categoryScroll}
+                    contentContainerStyle={styles.categoryContainer}
+                  >
+                    <TouchableOpacity
+                      style={[
+                        styles.categoryChip,
+                        !formData.categoryId && styles.categoryChipActive,
+                      ]}
+                      onPress={() => setFormData({ ...formData, categoryId: undefined })}
+                    >
+                      <Text
+                        style={[
+                          styles.categoryChipText,
+                          !formData.categoryId && styles.categoryChipTextActive,
+                        ]}
+                      >
+                        بدون دسته
+                      </Text>
+                    </TouchableOpacity>
+                    {categories.map((category) => (
+                      <TouchableOpacity
+                        key={category.id}
+                        style={[
+                          styles.categoryChip,
+                          formData.categoryId === category.id && styles.categoryChipActive,
+                          formData.categoryId === category.id && { borderColor: category.color },
+                        ]}
+                        onPress={() => setFormData({ ...formData, categoryId: category.id })}
+                      >
+                        <View
+                          style={[styles.categoryColor, { backgroundColor: category.color }]}
+                        />
+                        <Text
+                          style={[
+                            styles.categoryChipText,
+                            formData.categoryId === category.id && styles.categoryChipTextActive,
+                          ]}
+                        >
+                          {category.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
 
               <Text style={styles.label}>اولویت</Text>
               <View style={styles.priorityContainer}>
@@ -584,5 +636,42 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.fontSize.md,
     fontFamily: typography.fontFamily.bold,
+  },
+  categoryScroll: {
+    marginBottom: spacing.md,
+  },
+  categoryContainer: {
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceVariant,
+    borderWidth: 2,
+    borderColor: 'transparent',
+    gap: spacing.xs,
+    marginLeft: spacing.sm,
+  },
+  categoryChipActive: {
+    backgroundColor: colors.primary + '20',
+    borderColor: colors.primary,
+  },
+  categoryChipText: {
+    fontSize: typography.fontSize.sm,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textSecondary,
+  },
+  categoryChipTextActive: {
+    color: colors.text,
+    fontFamily: typography.fontFamily.bold,
+  },
+  categoryColor: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
 });

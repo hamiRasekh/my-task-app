@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "my-task-app",
-    "slug": "my-task-app",
+    "name": "Aveno",
+    "slug": "aveno",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -22,18 +22,30 @@
       "backgroundColor": "#0f172a"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "icon": "./assets/dark/hookflow_dark_ios_1024x1024.png",
+      "bundleIdentifier": "com.aveno.app"
     },
     "android": {
+      "icon": "./assets/dark/hookflow_dark_android_432x432.png",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0f172a"
       },
+      "package": "com.aveno.app",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "icon": "./assets/dark/hookflow_dark_web_512x512.png",
+      "bundler": "metro",
+      "output": "static"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "eb6984a1-e197-44b9-b038-950f9b23b1a7"
+      }
     }
   }
 }

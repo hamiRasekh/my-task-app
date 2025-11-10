@@ -11,11 +11,12 @@ import { TaskModal } from '../components/modals/TaskModal';
 import { TaskCard } from '../components/task/TaskCard';
 import { TaskFilters } from '../components/task/TaskFilters';
 import { SearchBar } from '../components/common/SearchBar';
+import { AppLogo } from '../components/common/AppLogo';
 import Task from '../database/models/Task';
 import { SortOption } from '../types/common.types';
 
 export const TasksScreen: React.FC = () => {
-  const { tasks, categories, loading, loadTasks, completeTask, deleteTask, setFilters, setSortBy, sortBy, filters } = useTaskStore();
+  const { tasks, categories, loading, loadTasks, loadCategories, completeTask, deleteTask, setFilters, setSortBy, sortBy, filters } = useTaskStore();
   const { openTaskModal } = useUIStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [filtersVisible, setFiltersVisible] = useState(false);
@@ -23,6 +24,7 @@ export const TasksScreen: React.FC = () => {
 
   useEffect(() => {
     loadTasks();
+    loadCategories();
   }, []);
 
   const handleAddTask = () => {
@@ -83,7 +85,10 @@ export const TasksScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.title}>کارها</Text>
+        <View style={styles.headerLeft}>
+          <AppLogo size="small" />
+          <Text style={styles.subtitle}>کارها</Text>
+        </View>
         <TouchableOpacity onPress={handleAddTask} style={styles.addButton}>
           <Ionicons name="add-circle" size={28} color={colors.primary} />
         </TouchableOpacity>
@@ -92,8 +97,8 @@ export const TasksScreen: React.FC = () => {
       <View style={styles.toolbar}>
         <View style={styles.searchContainer}>
           <SearchBar
-            value={searchQuery}
-            onChangeText={setSearchQuery}
+            searchText={searchQuery}
+            onSearchTextChange={setSearchQuery}
             placeholder="جستجوی کارها..."
           />
         </View>
@@ -213,10 +218,16 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     paddingBottom: spacing.sm,
   },
-  title: {
-    fontSize: typography.fontSize.xxl,
-    fontFamily: typography.fontFamily.bold,
-    color: colors.text,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  subtitle: {
+    fontSize: typography.fontSize.md,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textSecondary,
+    marginLeft: spacing.sm,
   },
   addButton: {
     padding: spacing.xs,

@@ -12,18 +12,24 @@ import { CigaretteCircularChart } from '../components/cigarette/CigaretteCircula
 import { TaskCard } from '../components/task/TaskCard';
 import { EmptyState } from '../components/common/EmptyState';
 import { TaskModal } from '../components/modals/TaskModal';
+import { AppLogo } from '../components/common/AppLogo';
 import Task from '../database/models/Task';
 
 export const HomeScreen: React.FC = () => {
-  const { tasks, loadTasks, completeTask, deleteTask } = useTaskStore();
+  const { tasks, loadTasks, loadCategories, completeTask, deleteTask } = useTaskStore();
   const { todayCigarette, loadTodayCigarette } = useCigaretteStore();
   const { openTaskModal } = useUIStore();
   const [todayPoints, setTodayPoints] = useState(0);
 
   useEffect(() => {
-    loadTasks();
-    loadTodayCigarette();
-    loadTodayPoints();
+    const refreshData = () => {
+      loadTasks();
+      loadCategories();
+      loadTodayCigarette();
+      loadTodayPoints();
+    };
+    
+    refreshData();
   }, []);
 
   const loadTodayPoints = async () => {
@@ -56,7 +62,10 @@ export const HomeScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>خانه</Text>
+        <View style={styles.header}>
+          <AppLogo size="medium" />
+          <Text style={styles.subtitle}>خانه</Text>
+        </View>
         
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
@@ -144,11 +153,16 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
   },
-  title: {
-    fontSize: typography.fontSize.xxxl,
-    fontFamily: typography.fontFamily.bold,
-    color: colors.text,
+  header: {
+    alignItems: 'center',
     marginBottom: spacing.lg,
+    paddingTop: spacing.sm,
+  },
+  subtitle: {
+    fontSize: typography.fontSize.md,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   statsContainer: {
     flexDirection: 'row',

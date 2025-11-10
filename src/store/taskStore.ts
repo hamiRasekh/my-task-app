@@ -5,6 +5,8 @@ import Task from '../database/models/Task';
 import Category from '../database/models/Category';
 import { TaskFormData } from '../types/task.types';
 import { FilterOption, SortOption } from '../types/common.types';
+import { DateService } from '../services/DateService';
+import { RewardService } from '../services/RewardService';
 
 interface TaskState {
   tasks: Task[];
@@ -17,7 +19,7 @@ interface TaskState {
   // Actions
   loadTasks: () => Promise<void>;
   loadCategories: () => Promise<void>;
-  createTask: (data: TaskFormData) => Promise<void>;
+  createTask: (data: TaskFormData) => Promise<Task>;
   updateTask: (taskId: string, data: Partial<TaskFormData>) => Promise<void>;
   deleteTask: (taskId: string) => Promise<void>;
   completeTask: (taskId: string) => Promise<void>;
@@ -98,7 +100,14 @@ export const useTaskStore = create<TaskState>((set, get) => ({
 
   completeTask: async (taskId: string) => {
     try {
-      await TaskRepository.completeTask(taskId);
+      const task = await TaskRepository.completeTask(taskId);
+      // Create reward for completing task
+      await RewardService.createReward(
+        taskId,
+        task.rewardPoints,
+        'reward',
+        DateService.getToday()
+      );
       await get().loadTasks();
     } catch (error: any) {
       set({ error: error.message });

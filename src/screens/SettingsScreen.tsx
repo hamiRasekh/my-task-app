@@ -6,6 +6,8 @@ import { colors, typography, spacing } from '../theme';
 import { useSettingsStore } from '../store/settingsStore';
 import { ExportService } from '../services/ExportService';
 import { Alert } from 'react-native';
+import { AppLogo } from '../components/common/AppLogo';
+import { APP_NAME } from '../utils/constants';
 
 export const SettingsScreen: React.FC = () => {
   const { settings, loading, loadSettings, updateNotificationSettings, updateDisplaySettings } = useSettingsStore();
@@ -54,7 +56,10 @@ export const SettingsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>تنظیمات</Text>
+        <View style={styles.header}>
+          <AppLogo size="medium" />
+          <Text style={styles.subtitle}>تنظیمات</Text>
+        </View>
 
         {/* Notification Settings */}
         <View style={styles.section}>
@@ -164,6 +169,9 @@ export const SettingsScreen: React.FC = () => {
         {/* App Info */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>درباره اپ</Text>
+          <View style={styles.appInfoContainer}>
+            <AppLogo size="small" showSubtitle />
+          </View>
           <Text style={styles.infoText}>نسخه: 1.0.0</Text>
           <Text style={styles.infoText}>مدیریت کار و ردیابی سیگار</Text>
         </View>
@@ -183,11 +191,16 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
   },
-  title: {
-    fontSize: typography.fontSize.xxl,
-    fontFamily: typography.fontFamily.bold,
-    color: colors.text,
+  header: {
+    alignItems: 'center',
     marginBottom: spacing.lg,
+    paddingTop: spacing.sm,
+  },
+  subtitle: {
+    fontSize: typography.fontSize.md,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   section: {
     backgroundColor: colors.surface,
@@ -234,6 +247,14 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.regular,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
+  },
+  appInfoContainer: {
+    alignItems: 'center',
+    marginVertical: spacing.md,
+    paddingVertical: spacing.md,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.border,
   },
   loadingText: {
     fontSize: typography.fontSize.md,

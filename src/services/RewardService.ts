@@ -71,16 +71,21 @@ export class RewardService {
    * Get total points for a date range
    */
   static async getTotalPoints(startDate: string, endDate: string): Promise<number> {
-    const rewards = await database
-      .get<Reward>('rewards')
-      .query(
-        database.collections.get('rewards').query()
-          .where('date', '>=', startDate)
-          .where('date', '<=', endDate)
-      )
-      .fetch();
+    const allRewards = await database.get<Reward>('rewards').query().fetch();
+    
+    const rewards = allRewards.filter((reward) => {
+      const rewardDate = reward.date;
+      return DateService.compareDates(rewardDate, startDate) >= 0 &&
+             DateService.compareDates(rewardDate, endDate) <= 0;
+    });
 
-    return rewards.reduce((total, reward) => total + reward.points, 0);
+    return rewards.reduce((total, reward) => {
+      if (reward.type === 'reward') {
+        return total + reward.points;
+      } else {
+        return total - Math.abs(reward.points);
+      }
+    }, 0);
   }
 
   /**
@@ -91,14 +96,13 @@ export class RewardService {
     penalties: number;
     total: number;
   }> {
-    const rewards = await database
-      .get<Reward>('rewards')
-      .query(
-        database.collections.get('rewards').query()
-          .where('date', '>=', startDate)
-          .where('date', '<=', endDate)
-      )
-      .fetch();
+    const allRewards = await database.get<Reward>('rewards').query().fetch();
+    
+    const rewards = allRewards.filter((reward) => {
+      const rewardDate = reward.date;
+      return DateService.compareDates(rewardDate, startDate) >= 0 &&
+             DateService.compareDates(rewardDate, endDate) <= 0;
+    });
 
     let rewardsTotal = 0;
     let penaltiesTotal = 0;

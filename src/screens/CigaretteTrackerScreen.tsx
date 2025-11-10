@@ -10,6 +10,7 @@ import { CigaretteCircularChart } from '../components/cigarette/CigaretteCircula
 import { DateService } from '../services/DateService';
 import { ReportService } from '../services/ReportService';
 import { CigaretteLineChart } from '../components/cigarette/CigaretteLineChart';
+import { AppLogo } from '../components/common/AppLogo';
 
 export const CigaretteTrackerScreen: React.FC = () => {
   const { todayCigarette, loading, loadTodayCigarette, addCigarette, removeCigarette, setDailyLimit } = useCigaretteStore();
@@ -80,7 +81,10 @@ export const CigaretteTrackerScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>ردیابی سیگار</Text>
+        <View style={styles.header}>
+          <AppLogo size="medium" />
+          <Text style={styles.subtitle}>ردیابی سیگار</Text>
+        </View>
         
         <View style={styles.card}>
           <View style={styles.cardHeader}>
@@ -178,11 +182,16 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
   },
-  title: {
-    fontSize: typography.fontSize.xxl,
-    fontFamily: typography.fontFamily.bold,
-    color: colors.text,
+  header: {
+    alignItems: 'center',
     marginBottom: spacing.lg,
+    paddingTop: spacing.sm,
+  },
+  subtitle: {
+    fontSize: typography.fontSize.md,
+    fontFamily: typography.fontFamily.medium,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
   },
   card: {
     backgroundColor: colors.surface,
