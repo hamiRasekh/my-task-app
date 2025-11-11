@@ -6,9 +6,6 @@ import { Provider as PaperProvider } from 'react-native-paper';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { colors } from './src/theme';
-import { notificationService } from './src/services/NotificationService';
-import { CategoryRepository } from './src/repositories/CategoryRepository';
-import { SettingsRepository } from './src/repositories/SettingsRepository';
 import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 import { logger } from './src/utils/logger';
 
@@ -19,7 +16,7 @@ export default function App() {
     logger.info('App started', { platform: Platform.OS, isDev: __DEV__ });
     
     // Initialize app with comprehensive error handling
-    // Show UI immediately, initialize database in background
+    // Show UI immediately, initialize everything in background
     const initializeApp = async () => {
       try {
         logger.debug('Starting app initialization...');
@@ -28,62 +25,66 @@ export default function App() {
         // This prevents blocking the UI thread
         setIsInitialized(true);
         
-        // Initialize database and repositories in background
-        // Don't block UI - let it happen asynchronously
-        (async () => {
+        // Initialize everything in background with delays
+        setTimeout(async () => {
           try {
-            // Small delay to ensure UI is rendered first
-            await new Promise((resolve) => setTimeout(resolve, 100));
+            // Delay to ensure UI is rendered first
+            await new Promise((resolve) => setTimeout(resolve, 500));
             
-            logger.debug('Checking database status...');
+            logger.debug('Initializing database...');
             
-            // Import database module
-            const dbModule = await import('./src/database/database');
-            
-            // Check if database is ready
-            if (!dbModule.isDatabaseReady()) {
-              logger.debug('Database not ready, initializing...');
-              const db = await dbModule.initializeDatabase();
+            // Import and initialize database lazily
+            try {
+              const { initializeDatabase } = await import('./src/database/database');
+              const db = await initializeDatabase();
               
               if (!db) {
                 logger.warn('Database initialization failed, app will continue with limited functionality');
-                // Don't return - continue with other initialization
               } else {
                 logger.info('Database initialized successfully');
+                
+                // Initialize repositories after database is ready
+                setTimeout(async () => {
+                  try {
+                    const { CategoryRepository } = await import('./src/repositories/CategoryRepository');
+                    const { SettingsRepository } = await import('./src/repositories/SettingsRepository');
+                    
+                    logger.debug('Initializing repositories...');
+                    
+                    const initPromises = [
+                      CategoryRepository.initializeDefaultCategories().catch((error) => {
+                        logger.error('Error initializing categories', error);
+                        return null;
+                      }),
+                      SettingsRepository.initializeDefaultSettings().catch((error) => {
+                        logger.error('Error initializing settings', error);
+                        return null;
+                      }),
+                    ];
+
+                    await Promise.race([
+                      Promise.allSettled(initPromises),
+                      new Promise((resolve) => setTimeout(resolve, 5000)),
+                    ]).catch((error) => {
+                      logger.error('Initialization timeout or error', error);
+                    });
+
+                    logger.info('Repository initialization completed');
+                  } catch (error) {
+                    logger.error('Error initializing repositories', error);
+                  }
+                }, 1000);
               }
-            } else {
-              logger.info('Database already initialized');
+            } catch (error) {
+              logger.error('Error importing database module', error);
             }
             
-            // Initialize repositories with extensive error handling
-            logger.debug('Initializing repositories...');
-            
-            const initPromises = [
-              CategoryRepository.initializeDefaultCategories().catch((error) => {
-                logger.error('Error initializing categories', error);
-                return null;
-              }),
-              SettingsRepository.initializeDefaultSettings().catch((error) => {
-                logger.error('Error initializing settings', error);
-                return null;
-              }),
-            ];
-
-            // Wait for initialization with timeout (3 seconds)
-            await Promise.race([
-              Promise.allSettled(initPromises),
-              new Promise((resolve) => setTimeout(resolve, 3000)),
-            ]).catch((error) => {
-              logger.error('Initialization timeout or error', error);
-            });
-
-            logger.info('Repository initialization completed');
-
             // Initialize notifications separately with delay
             if (Platform.OS !== 'web') {
-              logger.debug('Setting up notifications...');
               setTimeout(async () => {
                 try {
+                  const { notificationService } = await import('./src/services/NotificationService');
+                  logger.debug('Setting up notifications...');
                   await notificationService.requestPermissions().catch((error) => {
                     logger.warn('Error requesting notification permissions', error);
                   });
@@ -91,7 +92,7 @@ export default function App() {
                 } catch (error) {
                   logger.error('Error setting up notifications', error);
                 }
-              }, 2000);
+              }, 3000);
             } else {
               logger.info('Notifications skipped (web platform)');
             }
@@ -99,7 +100,7 @@ export default function App() {
             logger.error('Error in background initialization', error);
             // Don't block app - continue without database
           }
-        })(); // Execute immediately but don't wait
+        }, 100); // Small initial delay
         
       } catch (error) {
         logger.error('Error initializing app', error);
@@ -132,7 +133,7 @@ export default function App() {
     },
   };
 
-  // Show loading screen while initializing (very brief)
+  // Show loading screen very briefly
   if (!isInitialized) {
     return (
       <View style={styles.loadingContainer}>

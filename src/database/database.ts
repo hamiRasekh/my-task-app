@@ -13,33 +13,50 @@ import { logger } from '../utils/logger';
 // Create SQLite adapter for Expo with better error handling
 // Disable JSI for stability, especially with New Architecture
 let adapter: SQLiteAdapter | null = null;
+let adapterInitialized = false;
 
-try {
-  logger.debug('Creating SQLite adapter...', { platform: Platform.OS, jsi: false });
-  adapter = new SQLiteAdapter({
-    schema,
-    dbName: 'my_task_app',
-    // Disable JSI for stability - it may cause issues with New Architecture
-    jsi: false,
-    onSetUpError: (error) => {
-      logger.error('Database setup error', error as Error);
-      // Don't throw - allow app to continue
-      if (Platform.OS === 'web') {
-        logger.warn('Database setup failed on web, continuing with limited functionality');
-      } else {
-        logger.warn('Database setup error on native, attempting to continue');
-      }
-    },
-  });
-  logger.info('SQLite adapter created successfully');
-} catch (error) {
-  logger.error('Error creating database adapter', error as Error);
-  adapter = null;
-}
+// Initialize adapter lazily - don't crash on import
+const initializeAdapter = (): SQLiteAdapter | null => {
+  if (adapter) {
+    return adapter;
+  }
+  
+  if (adapterInitialized) {
+    return null; // Already tried and failed
+  }
+  
+  adapterInitialized = true;
+  
+  try {
+    logger.debug('Creating SQLite adapter...', { platform: Platform.OS, jsi: false });
+    adapter = new SQLiteAdapter({
+      schema,
+      dbName: 'my_task_app',
+      // Disable JSI for stability - it may cause issues with New Architecture
+      jsi: false,
+      onSetUpError: (error) => {
+        logger.error('Database setup error', error as Error);
+        // Don't throw - allow app to continue
+        if (Platform.OS === 'web') {
+          logger.warn('Database setup failed on web, continuing with limited functionality');
+        } else {
+          logger.warn('Database setup error on native, attempting to continue');
+        }
+      },
+    });
+    logger.info('SQLite adapter created successfully');
+    return adapter;
+  } catch (error) {
+    logger.error('Error creating database adapter', error as Error);
+    adapter = null;
+    return null;
+  }
+};
 
 // Create database instance (Singleton pattern) with error handling
-// Initialize with comprehensive error handling to prevent app crashes
+// Initialize lazily to prevent app crashes on startup
 let databaseInstance: Database | null = null;
+let databaseInitialized = false;
 
 // Initialize database function - safe and won't crash app
 const createDatabaseInstance = (): Database | null => {
@@ -47,7 +64,14 @@ const createDatabaseInstance = (): Database | null => {
     return databaseInstance;
   }
 
-  if (!adapter) {
+  if (databaseInitialized && !databaseInstance) {
+    return null; // Already tried and failed
+  }
+
+  databaseInitialized = true;
+
+  const dbAdapter = initializeAdapter();
+  if (!dbAdapter) {
     logger.error('Adapter not available, cannot create database');
     return null;
   }
@@ -59,7 +83,7 @@ const createDatabaseInstance = (): Database | null => {
     });
     
     databaseInstance = new Database({
-      adapter,
+      adapter: dbAdapter,
       modelClasses: [
         Task,
         Category,
@@ -79,40 +103,59 @@ const createDatabaseInstance = (): Database | null => {
       platform: Platform.OS,
     });
     // Don't throw - return null and let app continue without database
-    // The app should handle null database gracefully
     databaseInstance = null;
     return null;
   }
 };
 
-// Initialize database immediately but safely
-// If it fails, databaseInstance will be null and app can continue
-try {
-  databaseInstance = createDatabaseInstance();
-  if (!databaseInstance) {
-    logger.warn('Database initialization returned null - app will continue without database');
-  }
-} catch (error) {
-  logger.error('Error during database initialization', error as Error);
-  databaseInstance = null;
-}
-
-// Export database - will be null if initialization failed
-// All repositories should check for null database
-export const database = databaseInstance;
+// Export database with lazy initialization - don't initialize on import
+// This prevents crashes during module loading
+export const database: Database = new Proxy({} as Database, {
+  get(target, prop) {
+    if (!databaseInstance) {
+      // Lazy initialize on first access
+      databaseInstance = createDatabaseInstance();
+      if (!databaseInstance) {
+        // If initialization failed, throw a helpful error
+        const error = new Error('Database is not available. Please check logs for details.');
+        logger.error('Database access attempted but not available', error);
+        throw error;
+      }
+    }
+    const value = databaseInstance[prop as keyof Database];
+    if (typeof value === 'function') {
+      return value.bind(databaseInstance);
+    }
+    return value;
+  },
+  set(target, prop, value) {
+    if (!databaseInstance) {
+      databaseInstance = createDatabaseInstance();
+      if (!databaseInstance) {
+        throw new Error('Database is not available');
+      }
+    }
+    (databaseInstance as any)[prop] = value;
+    return true;
+  },
+}) as Database;
 
 // Helper function to check if database is available
 export const isDatabaseReady = (): boolean => {
+  if (!databaseInstance) {
+    // Try to initialize
+    databaseInstance = createDatabaseInstance();
+  }
   return databaseInstance !== null && adapter !== null;
 };
 
-// Initialize database function for lazy initialization
+// Initialize database function for explicit initialization
 export const initializeDatabase = async (): Promise<Database | null> => {
   if (databaseInstance) {
     return databaseInstance;
   }
   
-  logger.debug('Lazy initializing database...');
+  logger.debug('Explicitly initializing database...');
   databaseInstance = createDatabaseInstance();
   return databaseInstance;
 };
