@@ -1,7 +1,7 @@
 import { DateService } from './DateService';
-import { Task } from '../database/models/Task';
-import { Cigarette } from '../database/models/Cigarette';
-import { TaskCompletion } from '../database/models/TaskCompletion';
+import Task from '../database/models/Task';
+import Cigarette from '../database/models/Cigarette';
+import TaskCompletion from '../database/models/TaskCompletion';
 import { database } from '../database/database';
 import { CigaretteReport, CigaretteStats } from '../types/cigarette.types';
 
@@ -16,10 +16,15 @@ export class ReportService {
     overdue: number;
     completionRate: number;
   }> {
-    const tasks = await database
-      .get<Task>('tasks')
-      .query()
-      .fetch();
+    try {
+      if (!database) {
+        return { total: 0, completed: 0, pending: 0, overdue: 0, completionRate: 0 };
+      }
+      
+      const tasks = await database
+        .get<Task>('tasks')
+        .query()
+        .fetch();
 
     const filteredTasks = tasks.filter(
       (task) =>
@@ -33,13 +38,17 @@ export class ReportService {
     const overdue = filteredTasks.filter((t) => !t.isCompleted && DateService.isPast(t.scheduledDate)).length;
     const completionRate = total > 0 ? (completed / total) * 100 : 0;
 
-    return {
-      total,
-      completed,
-      pending,
-      overdue,
-      completionRate: Math.round(completionRate),
-    };
+      return {
+        total,
+        completed,
+        pending,
+        overdue,
+        completionRate: Math.round(completionRate),
+      };
+    } catch (error) {
+      console.error('Error getting task stats', error);
+      return { total: 0, completed: 0, pending: 0, overdue: 0, completionRate: 0 };
+    }
   }
 
   /**
@@ -50,10 +59,15 @@ export class ReportService {
     completed: number;
     completionRate: number;
   }>> {
-    const tasks = await database
-      .get<Task>('tasks')
-      .query()
-      .fetch();
+    try {
+      if (!database) {
+        return new Map();
+      }
+      
+      const tasks = await database
+        .get<Task>('tasks')
+        .query()
+        .fetch();
 
     const filteredTasks = tasks.filter(
       (task) =>
@@ -74,7 +88,11 @@ export class ReportService {
       statsByCategory.set(categoryId, current);
     });
 
-    return statsByCategory;
+      return statsByCategory;
+    } catch (error) {
+      console.error('Error getting task stats by category', error);
+      return new Map();
+    }
   }
 
   /**
@@ -84,10 +102,15 @@ export class ReportService {
     total: number;
     completed: number;
   }>> {
-    const tasks = await database
-      .get<Task>('tasks')
-      .query()
-      .fetch();
+    try {
+      if (!database) {
+        return new Map();
+      }
+      
+      const tasks = await database
+        .get<Task>('tasks')
+        .query()
+        .fetch();
 
     const dailyStats = new Map<string, { total: number; completed: number }>();
 
@@ -101,17 +124,35 @@ export class ReportService {
       currentDate = DateService.addDays(currentDate, 1);
     }
 
-    return dailyStats;
+      return dailyStats;
+    } catch (error) {
+      console.error('Error getting daily task completion', error);
+      return new Map();
+    }
   }
 
   /**
    * Get cigarette statistics
    */
   static async getCigaretteStats(startDate: string, endDate: string): Promise<CigaretteStats> {
-    const cigarettes = await database
-      .get<Cigarette>('cigarettes')
-      .query()
-      .fetch();
+    try {
+      if (!database) {
+        return {
+          today: 0,
+          weekly: 0,
+          monthly: 0,
+          average: 0,
+          max: 0,
+          min: 0,
+          streak: 0,
+          percentage: 0,
+        };
+      }
+      
+      const cigarettes = await database
+        .get<Cigarette>('cigarettes')
+        .query()
+        .fetch();
 
     const filteredCigarettes = cigarettes.filter(
       (c) =>
@@ -158,26 +199,44 @@ export class ReportService {
     const todayLimit = todayData?.dailyLimit || 10;
     const percentage = todayLimit > 0 ? (todayCount / todayLimit) * 100 : 0;
 
-    return {
-      today: todayCount,
-      weekly: weekData.reduce((sum, c) => sum + c.count, 0),
-      monthly: monthData.reduce((sum, c) => sum + c.count, 0),
-      average: Math.round(average),
-      max,
-      min,
-      streak,
-      percentage: Math.round(percentage),
-    };
+      return {
+        today: todayCount,
+        weekly: weekData.reduce((sum, c) => sum + c.count, 0),
+        monthly: monthData.reduce((sum, c) => sum + c.count, 0),
+        average: Math.round(average),
+        max,
+        min,
+        streak,
+        percentage: Math.round(percentage),
+      };
+    } catch (error) {
+      console.error('Error getting cigarette stats', error);
+      return {
+        today: 0,
+        weekly: 0,
+        monthly: 0,
+        average: 0,
+        max: 0,
+        min: 0,
+        streak: 0,
+        percentage: 0,
+      };
+    }
   }
 
   /**
    * Get cigarette reports for a date range
    */
   static async getCigaretteReports(startDate: string, endDate: string): Promise<CigaretteReport[]> {
-    const cigarettes = await database
-      .get<Cigarette>('cigarettes')
-      .query()
-      .fetch();
+    try {
+      if (!database) {
+        return [];
+      }
+      
+      const cigarettes = await database
+        .get<Cigarette>('cigarettes')
+        .query()
+        .fetch();
 
     const filteredCigarettes = cigarettes.filter(
       (c) =>
@@ -185,12 +244,16 @@ export class ReportService {
         DateService.compareDates(c.date, endDate) <= 0
     );
 
-    return filteredCigarettes.map((c) => ({
-      date: c.date,
-      count: c.count,
-      limit: c.dailyLimit,
-      percentage: c.dailyLimit > 0 ? Math.round((c.count / c.dailyLimit) * 100) : 0,
-    }));
+      return filteredCigarettes.map((c) => ({
+        date: c.date,
+        count: c.count,
+        limit: c.dailyLimit,
+        percentage: c.dailyLimit > 0 ? Math.round((c.count / c.dailyLimit) * 100) : 0,
+      }));
+    } catch (error) {
+      console.error('Error getting cigarette reports', error);
+      return [];
+    }
   }
 
   /**

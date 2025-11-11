@@ -52,41 +52,54 @@ export class TaskRepository {
    * Update an existing task
    */
   static async updateTask(taskId: string, data: Partial<TaskFormData>): Promise<Task> {
-    return await database.write(async () => {
-      const task = await database.get<Task>('tasks').find(taskId);
-      
-      return await task.update((task) => {
-        if (data.title !== undefined) task.title = data.title;
-        if (data.description !== undefined) task.description = data.description;
-        if (data.categoryId !== undefined) task.categoryId = data.categoryId;
-        if (data.scheduledDate !== undefined) {
-          task.scheduledDate = data.scheduledDate;
-          // Update status based on new date
-          task.status = DateService.isPast(data.scheduledDate) ? 'overdue' : 'pending';
-        }
-        if (data.deadline !== undefined) task.deadline = data.deadline;
-        if (data.time !== undefined) task.time = data.time;
-        if (data.startTime !== undefined) task.startTime = data.startTime;
-        if (data.endTime !== undefined) task.endTime = data.endTime;
-        if (data.isContinuous !== undefined) task.isContinuous = data.isContinuous;
-        if (data.priority !== undefined) task.priority = data.priority;
-        if (data.rewardPoints !== undefined) task.rewardPoints = data.rewardPoints;
-        if (data.penaltyPoints !== undefined) task.penaltyPoints = data.penaltyPoints;
-        if (data.notificationEnabled !== undefined) task.notificationEnabled = data.notificationEnabled;
-        if (data.notificationTime !== undefined) task.notificationTime = data.notificationTime;
-        task.updatedAt = Date.now();
+    try {
+      logger.debug('Updating task', { taskId });
+      return await database.write(async () => {
+        const task = await database.get<Task>('tasks').find(taskId);
+        
+        return await task.update((task) => {
+          if (data.title !== undefined) task.title = data.title;
+          if (data.description !== undefined) task.description = data.description;
+          if (data.categoryId !== undefined) task.categoryId = data.categoryId;
+          if (data.scheduledDate !== undefined) {
+            task.scheduledDate = data.scheduledDate;
+            // Update status based on new date
+            task.status = DateService.isPast(data.scheduledDate) ? 'overdue' : 'pending';
+          }
+          if (data.deadline !== undefined) task.deadline = data.deadline;
+          if (data.time !== undefined) task.time = data.time;
+          if (data.startTime !== undefined) task.startTime = data.startTime;
+          if (data.endTime !== undefined) task.endTime = data.endTime;
+          if (data.isContinuous !== undefined) task.isContinuous = data.isContinuous;
+          if (data.priority !== undefined) task.priority = data.priority;
+          if (data.rewardPoints !== undefined) task.rewardPoints = data.rewardPoints;
+          if (data.penaltyPoints !== undefined) task.penaltyPoints = data.penaltyPoints;
+          if (data.notificationEnabled !== undefined) task.notificationEnabled = data.notificationEnabled;
+          if (data.notificationTime !== undefined) task.notificationTime = data.notificationTime;
+          task.updatedAt = Date.now();
+        });
       });
-    });
+    } catch (error) {
+      logger.error('Error updating task', error as Error, { taskId });
+      throw error;
+    }
   }
 
   /**
    * Delete a task
    */
   static async deleteTask(taskId: string): Promise<void> {
-    await database.write(async () => {
-      const task = await database.get<Task>('tasks').find(taskId);
-      await task.markAsDeleted();
-    });
+    try {
+      logger.debug('Deleting task', { taskId });
+      await database.write(async () => {
+        const task = await database.get<Task>('tasks').find(taskId);
+        await task.markAsDeleted();
+      });
+      logger.info('Task deleted', { taskId });
+    } catch (error) {
+      logger.error('Error deleting task', error as Error, { taskId });
+      throw error;
+    }
   }
 
   /**
@@ -163,27 +176,48 @@ export class TaskRepository {
    * Get tasks for a specific date
    */
   static async getTasksByDate(date: string): Promise<Task[]> {
-    const allTasks = await this.getAllTasks();
-    return allTasks.filter((task) => task.scheduledDate === date);
+    try {
+      logger.debug('Fetching tasks by date', { date });
+      const allTasks = await this.getAllTasks();
+      const filtered = allTasks.filter((task) => task.scheduledDate === date);
+      logger.debug('Tasks by date fetched', { date, count: filtered.length });
+      return filtered;
+    } catch (error) {
+      logger.error('Error fetching tasks by date', error as Error, { date });
+      return [];
+    }
   }
 
   /**
    * Get today's tasks
    */
   static async getTodayTasks(): Promise<Task[]> {
-    const today = DateService.getToday();
-    return await this.getTasksByDate(today);
+    try {
+      const today = DateService.getToday();
+      return await this.getTasksByDate(today);
+    } catch (error) {
+      logger.error('Error fetching today tasks', error as Error);
+      return [];
+    }
   }
 
   /**
    * Get overdue tasks
    */
   static async getOverdueTasks(): Promise<Task[]> {
-    const today = DateService.getToday();
-    const allTasks = await this.getAllTasks();
-    return allTasks.filter(
-      (task) => !task.isCompleted && DateService.isPast(task.scheduledDate)
-    );
+    try {
+      logger.debug('Fetching overdue tasks');
+      const today = DateService.getToday();
+      const allTasks = await this.getAllTasks();
+      const overdue = allTasks.filter(
+        (task) => !task.isCompleted && DateService.isPast(task.scheduledDate)
+      );
+      logger.debug('Overdue tasks fetched', { count: overdue.length });
+      return overdue;
+    } catch (error) {
+      logger.error('Error fetching overdue tasks', error as Error);
+      return [];
+    }
   }
 
   /**
@@ -227,43 +261,56 @@ export class TaskRepository {
    * Mark task as incomplete
    */
   static async uncompleteTask(taskId: string): Promise<Task> {
-    return await database.write(async () => {
-      const task = await database.get<Task>('tasks').find(taskId);
-      const status: TaskStatus = DateService.isPast(task.scheduledDate)
-        ? 'overdue'
-        : 'pending';
-      
-      return await task.update((task) => {
-        task.isCompleted = false;
-        task.status = status;
-        task.updatedAt = Date.now();
+    try {
+      logger.debug('Uncompleting task', { taskId });
+      return await database.write(async () => {
+        const task = await database.get<Task>('tasks').find(taskId);
+        const status: TaskStatus = DateService.isPast(task.scheduledDate)
+          ? 'overdue'
+          : 'pending';
+        
+        return await task.update((task) => {
+          task.isCompleted = false;
+          task.status = status;
+          task.updatedAt = Date.now();
+        });
       });
-    });
+    } catch (error) {
+      logger.error('Error uncompleting task', error as Error, { taskId });
+      throw error;
+    }
   }
 
   /**
    * Update task status based on dates
    */
   static async updateTaskStatuses(): Promise<void> {
-    const tasks = await this.getAllTasks();
-    const today = DateService.getToday();
+    try {
+      logger.debug('Updating task statuses');
+      const tasks = await this.getAllTasks();
+      const today = DateService.getToday();
 
-    await database.write(async () => {
-      for (const task of tasks) {
-        if (!task.isCompleted) {
-          const status: TaskStatus = DateService.isPast(task.scheduledDate)
-            ? 'overdue'
-            : 'pending';
-          
-          if (task.status !== status) {
-            await task.update((t) => {
-              t.status = status;
-              t.updatedAt = Date.now();
-            });
+      await database.write(async () => {
+        for (const task of tasks) {
+          if (!task.isCompleted) {
+            const status: TaskStatus = DateService.isPast(task.scheduledDate)
+              ? 'overdue'
+              : 'pending';
+            
+            if (task.status !== status) {
+              await task.update((t) => {
+                t.status = status;
+                t.updatedAt = Date.now();
+              });
+            }
           }
         }
-      }
-    });
+      });
+      logger.debug('Task statuses updated');
+    } catch (error) {
+      logger.error('Error updating task statuses', error as Error);
+      // Don't throw - allow app to continue
+    }
   }
 }
 

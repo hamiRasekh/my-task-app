@@ -35,37 +35,47 @@ export class SettingsRepository {
    * Update app settings
    */
   static async updateSettings(settings: Partial<AppSettings>): Promise<Settings> {
-    const currentSettings = await this.getSettings();
-    const newSettings: AppSettings = {
-      ...currentSettings,
-      ...settings,
-      notifications: {
-        ...currentSettings.notifications,
-        ...settings.notifications,
-      },
-      display: {
-        ...currentSettings.display,
-        ...settings.display,
-      },
-    };
-
-    return await database.write(async () => {
-      const existing = await this.getSettingsRecord();
-      
-      if (existing) {
-        return await existing.update((s) => {
-          s.setValue(newSettings);
-          s.updatedAt = Date.now();
-        });
-      } else {
-        return await database.get<Settings>('settings').create((s) => {
-          s.key = this.SETTINGS_KEY;
-          s.setValue(newSettings);
-          s.createdAt = Date.now();
-          s.updatedAt = Date.now();
-        });
+    try {
+      if (!database) {
+        logger.warn('Database not available, cannot update settings');
+        throw new Error('Database is not available');
       }
-    });
+      
+      const currentSettings = await this.getSettings();
+      const newSettings: AppSettings = {
+        ...currentSettings,
+        ...settings,
+        notifications: {
+          ...currentSettings.notifications,
+          ...settings.notifications,
+        },
+        display: {
+          ...currentSettings.display,
+          ...settings.display,
+        },
+      };
+
+      return await database.write(async () => {
+        const existing = await this.getSettingsRecord();
+        
+        if (existing) {
+          return await existing.update((s) => {
+            s.setValue(newSettings);
+            s.updatedAt = Date.now();
+          });
+        } else {
+          return await database.get<Settings>('settings').create((s) => {
+            s.key = this.SETTINGS_KEY;
+            s.setValue(newSettings);
+            s.createdAt = Date.now();
+            s.updatedAt = Date.now();
+          });
+        }
+      });
+    } catch (error) {
+      logger.error('Error updating settings', error as Error);
+      throw error;
+    }
   }
 
   /**
@@ -119,6 +129,11 @@ export class SettingsRepository {
    */
   private static async getSettingsRecord(): Promise<Settings | null> {
     try {
+      if (!database) {
+        logger.warn('Database not available, cannot get settings record');
+        return null;
+      }
+      
       const settings = await database
         .get<Settings>('settings')
         .query()
@@ -127,6 +142,7 @@ export class SettingsRepository {
       
       return settings.length > 0 ? settings[0] : null;
     } catch (error) {
+      logger.error('Error getting settings record', error as Error);
       return null;
     }
   }
@@ -162,12 +178,23 @@ export class SettingsRepository {
    */
   static async initializeDefaultSettings(): Promise<void> {
     try {
+      if (!database) {
+        logger.warn('Database not available, skipping settings initialization');
+        return;
+      }
+      
       logger.debug('Initializing default settings');
       const existing = await this.getSettingsRecord().catch(() => null);
       
       if (!existing) {
         logger.info('Creating default settings');
         const defaultSettings = this.getDefaultSettings();
+        
+        if (!database) {
+          logger.warn('Database not available during settings creation');
+          return;
+        }
+        
         await database.write(async () => {
           try {
             await database.get<Settings>('settings').create((s) => {

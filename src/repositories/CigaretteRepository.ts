@@ -15,28 +15,34 @@ export class CigaretteRepository {
    * Create or update cigarette record for a date
    */
   static async upsertCigarette(data: CigaretteData): Promise<Cigarette> {
-    const existing = await this.getCigaretteByDate(data.date);
+    try {
+      logger.debug('Upserting cigarette', { date: data.date, count: data.count });
+      const existing = await this.getCigaretteByDate(data.date);
 
-    if (existing) {
-      return await database.write(async () => {
-        return await existing.update((cigarette) => {
-          cigarette.count = data.count;
-          cigarette.dailyLimit = data.dailyLimit;
-          cigarette.timestamps = data.timestamps || [];
-          cigarette.updatedAt = Date.now();
+      if (existing) {
+        return await database.write(async () => {
+          return await existing.update((cigarette) => {
+            cigarette.count = data.count;
+            cigarette.dailyLimit = data.dailyLimit;
+            cigarette.timestamps = data.timestamps || [];
+            cigarette.updatedAt = Date.now();
+          });
         });
-      });
-    } else {
-      return await database.write(async () => {
-        return await database.get<Cigarette>('cigarettes').create((cigarette) => {
-          cigarette.date = data.date;
-          cigarette.count = data.count;
-          cigarette.dailyLimit = data.dailyLimit;
-          cigarette.timestamps = data.timestamps || [];
-          cigarette.createdAt = Date.now();
-          cigarette.updatedAt = Date.now();
+      } else {
+        return await database.write(async () => {
+          return await database.get<Cigarette>('cigarettes').create((cigarette) => {
+            cigarette.date = data.date;
+            cigarette.count = data.count;
+            cigarette.dailyLimit = data.dailyLimit;
+            cigarette.timestamps = data.timestamps || [];
+            cigarette.createdAt = Date.now();
+            cigarette.updatedAt = Date.now();
+          });
         });
-      });
+      }
+    } catch (error) {
+      logger.error('Error upserting cigarette', error as Error, { date: data.date });
+      throw error;
     }
   }
 
@@ -64,8 +70,13 @@ export class CigaretteRepository {
    * Get today's cigarette record
    */
   static async getTodayCigarette(): Promise<Cigarette | null> {
-    const today = DateService.getToday();
-    return await this.getCigaretteByDate(today);
+    try {
+      const today = DateService.getToday();
+      return await this.getCigaretteByDate(today);
+    } catch (error) {
+      logger.error('Error getting today cigarette', error as Error);
+      return null;
+    }
   }
 
   /**
@@ -101,66 +112,92 @@ export class CigaretteRepository {
    * Add a cigarette (increment count)
    */
   static async addCigarette(): Promise<Cigarette> {
-    const today = await this.getOrCreateTodayCigarette();
-    const newCount = today.count + 1;
-    const newTimestamps = [...today.timestamps, Date.now()];
+    try {
+      logger.debug('Adding cigarette');
+      const today = await this.getOrCreateTodayCigarette();
+      const newCount = today.count + 1;
+      const newTimestamps = [...today.timestamps, Date.now()];
 
-    return await database.write(async () => {
-      return await today.update((cigarette) => {
-        cigarette.count = newCount;
-        cigarette.timestamps = newTimestamps;
-        cigarette.updatedAt = Date.now();
+      return await database.write(async () => {
+        return await today.update((cigarette) => {
+          cigarette.count = newCount;
+          cigarette.timestamps = newTimestamps;
+          cigarette.updatedAt = Date.now();
+        });
       });
-    });
+    } catch (error) {
+      logger.error('Error adding cigarette', error as Error);
+      throw error;
+    }
   }
 
   /**
    * Remove a cigarette (decrement count)
    */
   static async removeCigarette(): Promise<Cigarette> {
-    const today = await this.getTodayCigarette();
-    
-    if (!today || today.count === 0) {
-      throw new Error('No cigarettes to remove');
-    }
+    try {
+      logger.debug('Removing cigarette');
+      const today = await this.getTodayCigarette();
+      
+      if (!today || today.count === 0) {
+        throw new Error('No cigarettes to remove');
+      }
 
-    const newCount = Math.max(0, today.count - 1);
-    const newTimestamps = today.timestamps.slice(0, -1);
+      const newCount = Math.max(0, today.count - 1);
+      const newTimestamps = today.timestamps.slice(0, -1);
 
-    return await database.write(async () => {
-      return await today.update((cigarette) => {
-        cigarette.count = newCount;
-        cigarette.timestamps = newTimestamps;
-        cigarette.updatedAt = Date.now();
+      return await database.write(async () => {
+        return await today.update((cigarette) => {
+          cigarette.count = newCount;
+          cigarette.timestamps = newTimestamps;
+          cigarette.updatedAt = Date.now();
+        });
       });
-    });
+    } catch (error) {
+      logger.error('Error removing cigarette', error as Error);
+      throw error;
+    }
   }
 
   /**
    * Set daily limit for today
    */
   static async setDailyLimit(limit: number): Promise<Cigarette> {
-    const today = await this.getOrCreateTodayCigarette(limit);
-    
-    return await database.write(async () => {
-      return await today.update((cigarette) => {
-        cigarette.dailyLimit = limit;
-        cigarette.updatedAt = Date.now();
+    try {
+      logger.debug('Setting daily limit', { limit });
+      const today = await this.getOrCreateTodayCigarette(limit);
+      
+      return await database.write(async () => {
+        return await today.update((cigarette) => {
+          cigarette.dailyLimit = limit;
+          cigarette.updatedAt = Date.now();
+        });
       });
-    });
+    } catch (error) {
+      logger.error('Error setting daily limit', error as Error, { limit });
+      throw error;
+    }
   }
 
   /**
    * Get cigarettes for a date range
    */
   static async getCigarettesByDateRange(startDate: string, endDate: string): Promise<Cigarette[]> {
-    const allCigarettes = await database.get<Cigarette>('cigarettes').query().fetch();
-    
-    return allCigarettes.filter(
-      (c) =>
-        DateService.compareDates(c.date, startDate) >= 0 &&
-        DateService.compareDates(c.date, endDate) <= 0
-    );
+    try {
+      logger.debug('Fetching cigarettes by date range', { startDate, endDate });
+      const allCigarettes = await database.get<Cigarette>('cigarettes').query().fetch();
+      
+      const filtered = allCigarettes.filter(
+        (c) =>
+          DateService.compareDates(c.date, startDate) >= 0 &&
+          DateService.compareDates(c.date, endDate) <= 0
+      );
+      logger.debug('Cigarettes by date range fetched', { count: filtered.length });
+      return filtered;
+    } catch (error) {
+      logger.error('Error fetching cigarettes by date range', error as Error, { startDate, endDate });
+      return [];
+    }
   }
 
   /**
@@ -182,11 +219,18 @@ export class CigaretteRepository {
    * Delete cigarette record for a date
    */
   static async deleteCigarette(date: string): Promise<void> {
-    const cigarette = await this.getCigaretteByDate(date);
-    if (cigarette) {
-      await database.write(async () => {
-        await cigarette.markAsDeleted();
-      });
+    try {
+      logger.debug('Deleting cigarette', { date });
+      const cigarette = await this.getCigaretteByDate(date);
+      if (cigarette) {
+        await database.write(async () => {
+          await cigarette.markAsDeleted();
+        });
+        logger.info('Cigarette deleted', { date });
+      }
+    } catch (error) {
+      logger.error('Error deleting cigarette', error as Error, { date });
+      throw error;
     }
   }
 }

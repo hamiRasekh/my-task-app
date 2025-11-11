@@ -55,23 +55,37 @@ export class RewardService {
     type: RewardType,
     date: string
   ): Promise<Reward> {
-    return await database.write(async () => {
-      return await database.get<Reward>('rewards').create((reward) => {
-        reward.taskId = taskId || undefined;
-        reward.points = points;
-        reward.type = type;
-        reward.date = date;
-        reward.createdAt = Date.now();
-        reward.updatedAt = Date.now();
+    try {
+      if (!database) {
+        throw new Error('Database is not available');
+      }
+      
+      return await database.write(async () => {
+        return await database.get<Reward>('rewards').create((reward) => {
+          reward.taskId = taskId || undefined;
+          reward.points = points;
+          reward.type = type;
+          reward.date = date;
+          reward.createdAt = Date.now();
+          reward.updatedAt = Date.now();
+        });
       });
-    });
+    } catch (error) {
+      console.error('Error creating reward', error);
+      throw error;
+    }
   }
 
   /**
    * Get total points for a date range
    */
   static async getTotalPoints(startDate: string, endDate: string): Promise<number> {
-    const allRewards = await database.get<Reward>('rewards').query().fetch();
+    try {
+      if (!database) {
+        return 0;
+      }
+      
+      const allRewards = await database.get<Reward>('rewards').query().fetch();
     
     const rewards = allRewards.filter((reward) => {
       const rewardDate = reward.date;
@@ -79,13 +93,17 @@ export class RewardService {
              DateService.compareDates(rewardDate, endDate) <= 0;
     });
 
-    return rewards.reduce((total, reward) => {
-      if (reward.type === 'reward') {
-        return total + reward.points;
-      } else {
-        return total - Math.abs(reward.points);
-      }
-    }, 0);
+      return rewards.reduce((total, reward) => {
+        if (reward.type === 'reward') {
+          return total + reward.points;
+        } else {
+          return total - Math.abs(reward.points);
+        }
+      }, 0);
+    } catch (error) {
+      console.error('Error getting total points', error);
+      return 0;
+    }
   }
 
   /**
@@ -96,7 +114,12 @@ export class RewardService {
     penalties: number;
     total: number;
   }> {
-    const allRewards = await database.get<Reward>('rewards').query().fetch();
+    try {
+      if (!database) {
+        return { rewards: 0, penalties: 0, total: 0 };
+      }
+      
+      const allRewards = await database.get<Reward>('rewards').query().fetch();
     
     const rewards = allRewards.filter((reward) => {
       const rewardDate = reward.date;
@@ -115,11 +138,15 @@ export class RewardService {
       }
     });
 
-    return {
-      rewards: rewardsTotal,
-      penalties: penaltiesTotal,
-      total: rewardsTotal - penaltiesTotal,
-    };
+      return {
+        rewards: rewardsTotal,
+        penalties: penaltiesTotal,
+        total: rewardsTotal - penaltiesTotal,
+      };
+    } catch (error) {
+      console.error('Error getting points breakdown', error);
+      return { rewards: 0, penalties: 0, total: 0 };
+    }
   }
 
   /**

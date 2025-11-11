@@ -13,6 +13,10 @@ export class ExportService {
    */
   static async exportToJSON(): Promise<string> {
     try {
+      if (!database) {
+        throw new Error('Database is not available');
+      }
+      
       const tasks = await database.get<Task>('tasks').query().fetch();
       const categories = await database.get<Category>('categories').query().fetch();
       const cigarettes = await database.get<Cigarette>('cigarettes').query().fetch();
@@ -88,6 +92,10 @@ export class ExportService {
    */
   static async importFromJSON(jsonData: string): Promise<void> {
     try {
+      if (!database) {
+        throw new Error('Database is not available');
+      }
+      
       const data = JSON.parse(jsonData);
 
       await database.write(async () => {

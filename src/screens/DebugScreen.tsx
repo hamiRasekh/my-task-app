@@ -31,6 +31,9 @@ export const DebugScreen: React.FC = () => {
 
   const loadDatabaseStats = async () => {
     try {
+      const { isDatabaseReady } = await import('../database/database');
+      const dbReady = isDatabaseReady();
+      
       const tasks = await TaskRepository.getAllTasks().catch(() => []);
       const categories = await CategoryRepository.getAllCategories().catch(() => []);
       const cigarettes = await CigaretteRepository.getAllCigarettes().catch(() => []);
@@ -39,11 +42,17 @@ export const DebugScreen: React.FC = () => {
         tasks: tasks.length,
         categories: categories.length,
         cigarettes: cigarettes.length,
-        databaseReady: database !== null,
+        databaseReady: dbReady,
       });
     } catch (error) {
       logger.error('Error loading database stats', error);
-      setDbStats({ error: 'Failed to load stats' });
+      setDbStats({ 
+        tasks: 0,
+        categories: 0,
+        cigarettes: 0,
+        databaseReady: false,
+        error: 'Failed to load stats' 
+      });
     }
   };
 

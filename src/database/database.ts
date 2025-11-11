@@ -110,33 +110,50 @@ const createDatabaseInstance = (): Database | null => {
 
 // Export database with lazy initialization - don't initialize on import
 // This prevents crashes during module loading
+// Use a safe proxy that handles errors gracefully
 export const database: Database = new Proxy({} as Database, {
   get(target, prop) {
-    if (!databaseInstance) {
-      // Lazy initialize on first access
-      databaseInstance = createDatabaseInstance();
+    try {
       if (!databaseInstance) {
-        // If initialization failed, throw a helpful error
-        const error = new Error('Database is not available. Please check logs for details.');
-        logger.error('Database access attempted but not available', error);
-        throw error;
+        // Lazy initialize on first access
+        databaseInstance = createDatabaseInstance();
+        if (!databaseInstance) {
+          // If initialization failed, return a safe fallback
+          logger.error('Database access attempted but not available');
+          // Return a mock object that throws on use but doesn't crash on access
+          return () => {
+            throw new Error('Database is not available. Please check logs for details.');
+          };
+        }
       }
+      const value = databaseInstance[prop as keyof Database];
+      if (typeof value === 'function') {
+        return value.bind(databaseInstance);
+      }
+      return value;
+    } catch (error) {
+      logger.error('Error accessing database property', error as Error, { property: String(prop) });
+      // Return a safe fallback function
+      return () => {
+        throw new Error('Database is not available');
+      };
     }
-    const value = databaseInstance[prop as keyof Database];
-    if (typeof value === 'function') {
-      return value.bind(databaseInstance);
-    }
-    return value;
   },
   set(target, prop, value) {
-    if (!databaseInstance) {
-      databaseInstance = createDatabaseInstance();
+    try {
       if (!databaseInstance) {
-        throw new Error('Database is not available');
+        databaseInstance = createDatabaseInstance();
+        if (!databaseInstance) {
+          logger.error('Cannot set database property - database not available');
+          return false;
+        }
       }
+      (databaseInstance as any)[prop] = value;
+      return true;
+    } catch (error) {
+      logger.error('Error setting database property', error as Error);
+      return false;
     }
-    (databaseInstance as any)[prop] = value;
-    return true;
   },
 }) as Database;
 

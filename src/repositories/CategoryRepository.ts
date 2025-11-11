@@ -41,26 +41,39 @@ export class CategoryRepository {
     categoryId: string,
     data: Partial<CategoryData>
   ): Promise<Category> {
-    return await database.write(async () => {
-      const category = await database.get<Category>('categories').find(categoryId);
-      
-      return await category.update((category) => {
-        if (data.name !== undefined) category.name = data.name;
-        if (data.color !== undefined) category.color = data.color;
-        if (data.icon !== undefined) category.icon = data.icon;
-        category.updatedAt = Date.now();
+    try {
+      logger.debug('Updating category', { categoryId });
+      return await database.write(async () => {
+        const category = await database.get<Category>('categories').find(categoryId);
+        
+        return await category.update((category) => {
+          if (data.name !== undefined) category.name = data.name;
+          if (data.color !== undefined) category.color = data.color;
+          if (data.icon !== undefined) category.icon = data.icon;
+          category.updatedAt = Date.now();
+        });
       });
-    });
+    } catch (error) {
+      logger.error('Error updating category', error as Error, { categoryId });
+      throw error;
+    }
   }
 
   /**
    * Delete a category
    */
   static async deleteCategory(categoryId: string): Promise<void> {
-    await database.write(async () => {
-      const category = await database.get<Category>('categories').find(categoryId);
-      await category.markAsDeleted();
-    });
+    try {
+      logger.debug('Deleting category', { categoryId });
+      await database.write(async () => {
+        const category = await database.get<Category>('categories').find(categoryId);
+        await category.markAsDeleted();
+      });
+      logger.info('Category deleted', { categoryId });
+    } catch (error) {
+      logger.error('Error deleting category', error as Error, { categoryId });
+      throw error;
+    }
   }
 
   /**
@@ -97,11 +110,19 @@ export class CategoryRepository {
    * Get custom categories only
    */
   static async getCustomCategories(): Promise<Category[]> {
-    return await database
-      .get<Category>('categories')
-      .query()
-      .where('is_custom', true)
-      .fetch();
+    try {
+      logger.debug('Fetching custom categories');
+      const categories = await database
+        .get<Category>('categories')
+        .query()
+        .where('is_custom', true)
+        .fetch();
+      logger.debug('Custom categories fetched', { count: categories.length });
+      return categories;
+    } catch (error) {
+      logger.error('Error fetching custom categories', error as Error);
+      return [];
+    }
   }
 
   /**
