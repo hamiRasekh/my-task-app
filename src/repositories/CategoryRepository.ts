@@ -1,5 +1,6 @@
 import { database } from '../database/database';
 import Category from '../database/models/Category';
+import { logger } from '../utils/logger';
 
 export interface CategoryData {
   name: string;
@@ -13,16 +14,24 @@ export class CategoryRepository {
    * Create a new category
    */
   static async createCategory(data: CategoryData): Promise<Category> {
-    return await database.write(async () => {
-      return await database.get<Category>('categories').create((category) => {
-        category.name = data.name;
-        category.color = data.color;
-        category.icon = data.icon;
-        category.isCustom = data.isCustom ?? true;
-        category.createdAt = Date.now();
-        category.updatedAt = Date.now();
+    try {
+      logger.debug('Creating category', { name: data.name });
+      const category = await database.write(async () => {
+        return await database.get<Category>('categories').create((category) => {
+          category.name = data.name;
+          category.color = data.color;
+          category.icon = data.icon;
+          category.isCustom = data.isCustom ?? true;
+          category.createdAt = Date.now();
+          category.updatedAt = Date.now();
+        });
       });
-    });
+      logger.info('Category created', { categoryId: category.id, name: category.name });
+      return category;
+    } catch (error) {
+      logger.error('Error creating category', error as Error, { categoryData: data });
+      throw error;
+    }
   }
 
   /**
@@ -69,7 +78,19 @@ export class CategoryRepository {
    * Get all categories
    */
   static async getAllCategories(): Promise<Category[]> {
-    return await database.get<Category>('categories').query().fetch();
+    try {
+      if (!database) {
+        logger.warn('Database not available, returning empty categories');
+        return [];
+      }
+      logger.debug('Fetching all categories');
+      const categories = await database.get<Category>('categories').query().fetch();
+      logger.debug('Categories fetched', { count: categories.length });
+      return categories;
+    } catch (error) {
+      logger.error('Error fetching all categories', error as Error);
+      return [];
+    }
   }
 
   /**
@@ -87,32 +108,57 @@ export class CategoryRepository {
    * Initialize default categories
    */
   static async initializeDefaultCategories(): Promise<void> {
-    const existingCategories = await this.getAllCategories();
-    
-    if (existingCategories.length > 0) {
-      return; // Categories already initialized
-    }
-
-    const defaultCategories: CategoryData[] = [
-      { name: 'کار', color: '#6366f1', icon: 'briefcase', isCustom: false },
-      { name: 'شخصی', color: '#8b5cf6', icon: 'user', isCustom: false },
-      { name: 'سلامت', color: '#10b981', icon: 'heart', isCustom: false },
-      { name: 'آموزش', color: '#3b82f6', icon: 'book', isCustom: false },
-      { name: 'سرگرمی', color: '#f59e0b', icon: 'film', isCustom: false },
-    ];
-
-    await database.write(async () => {
-      for (const categoryData of defaultCategories) {
-        await database.get<Category>('categories').create((category) => {
-          category.name = categoryData.name;
-          category.color = categoryData.color;
-          category.icon = categoryData.icon;
-          category.isCustom = categoryData.isCustom || false;
-          category.createdAt = Date.now();
-          category.updatedAt = Date.now();
-        });
+    try {
+      if (!database) {
+        logger.warn('Database not available, skipping category initialization');
+        return;
       }
-    });
+      
+      logger.debug('Initializing default categories');
+      const existingCategories = await this.getAllCategories();
+      
+      if (existingCategories.length > 0) {
+        logger.debug('Categories already initialized', { count: existingCategories.length });
+        return; // Categories already initialized
+      }
+
+      logger.info('Creating default categories');
+      const defaultCategories: CategoryData[] = [
+        { name: 'کار', color: '#6366f1', icon: 'briefcase', isCustom: false },
+        { name: 'شخصی', color: '#8b5cf6', icon: 'user', isCustom: false },
+        { name: 'سلامت', color: '#10b981', icon: 'heart', isCustom: false },
+        { name: 'آموزش', color: '#3b82f6', icon: 'book', isCustom: false },
+        { name: 'سرگرمی', color: '#f59e0b', icon: 'film', isCustom: false },
+      ];
+
+      if (!database) {
+        logger.warn('Database not available during category creation');
+        return;
+      }
+
+      await database.write(async () => {
+        for (const categoryData of defaultCategories) {
+          try {
+            await database.get<Category>('categories').create((category) => {
+              category.name = categoryData.name;
+              category.color = categoryData.color;
+              category.icon = categoryData.icon;
+              category.isCustom = categoryData.isCustom || false;
+              category.createdAt = Date.now();
+              category.updatedAt = Date.now();
+            });
+            logger.debug('Default category created', { name: categoryData.name });
+          } catch (error) {
+            logger.warn('Error creating category', error as Error, { categoryName: categoryData.name });
+            // Continue with next category
+          }
+        }
+      });
+      logger.info('Default categories initialized successfully');
+    } catch (error) {
+      logger.error('Error initializing default categories', error as Error);
+      // Don't throw - allow app to continue
+    }
   }
 }
 

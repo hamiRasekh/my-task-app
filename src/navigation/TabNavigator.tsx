@@ -7,6 +7,8 @@ import { TasksScreen } from '../screens/TasksScreen';
 import { CigaretteTrackerScreen } from '../screens/CigaretteTrackerScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
+import { DebugScreen } from '../screens/DebugScreen';
+import { logger } from '../utils/logger';
 
 const Tab = createBottomTabNavigator();
 
@@ -78,6 +80,17 @@ export const TabNavigator: React.FC = () => {
           title: 'تنظیمات',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="settings" size={size} color={color} />
+          ),
+        }}
+      />
+      {/* Debug Screen - Always visible for debugging */}
+      <Tab.Screen
+        name="Debug"
+        component={DebugScreen}
+        options={{
+          title: 'Debug',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="bug" size={size} color={color} />
           ),
         }}
       />

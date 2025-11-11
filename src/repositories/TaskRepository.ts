@@ -4,38 +4,48 @@ import TaskCompletion from '../database/models/TaskCompletion';
 import { TaskFormData, Task as TaskType } from '../types/task.types';
 import { Priority, TaskStatus, FilterOption } from '../types/common.types';
 import { DateService } from '../services/DateService';
+import { logger } from '../utils/logger';
 
 export class TaskRepository {
   /**
    * Create a new task
    */
   static async createTask(data: TaskFormData): Promise<Task> {
-    return await database.write(async () => {
+    try {
+      logger.debug('Creating task', { title: data.title, scheduledDate: data.scheduledDate });
       const status: TaskStatus = DateService.isPast(data.scheduledDate)
         ? 'overdue'
         : 'pending';
 
-      return await database.get<Task>('tasks').create((task) => {
-        task.title = data.title;
-        task.description = data.description;
-        task.categoryId = data.categoryId;
-        task.scheduledDate = data.scheduledDate;
-        task.deadline = data.deadline;
-        task.time = data.time;
-        task.startTime = data.startTime;
-        task.endTime = data.endTime;
-        task.isContinuous = data.isContinuous;
-        task.isCompleted = false;
-        task.priority = data.priority;
-        task.rewardPoints = data.rewardPoints;
-        task.penaltyPoints = data.penaltyPoints;
-        task.notificationEnabled = data.notificationEnabled;
-        task.notificationTime = data.notificationTime;
-        task.status = status;
-        task.createdAt = Date.now();
-        task.updatedAt = Date.now();
+      const task = await database.write(async () => {
+        return await database.get<Task>('tasks').create((task) => {
+          task.title = data.title;
+          task.description = data.description;
+          task.categoryId = data.categoryId;
+          task.scheduledDate = data.scheduledDate;
+          task.deadline = data.deadline;
+          task.time = data.time;
+          task.startTime = data.startTime;
+          task.endTime = data.endTime;
+          task.isContinuous = data.isContinuous;
+          task.isCompleted = false;
+          task.priority = data.priority;
+          task.rewardPoints = data.rewardPoints;
+          task.penaltyPoints = data.penaltyPoints;
+          task.notificationEnabled = data.notificationEnabled;
+          task.notificationTime = data.notificationTime;
+          task.status = status;
+          task.createdAt = Date.now();
+          task.updatedAt = Date.now();
+        });
       });
-    });
+      
+      logger.info('Task created successfully', { taskId: task.id, title: task.title });
+      return task;
+    } catch (error) {
+      logger.error('Error creating task', error as Error, { taskData: data });
+      throw error;
+    }
   }
 
   /**
@@ -94,42 +104,59 @@ export class TaskRepository {
    * Get all tasks
    */
   static async getAllTasks(): Promise<Task[]> {
-    return await database.get<Task>('tasks').query().fetch();
+    try {
+      logger.debug('Fetching all tasks');
+      const tasks = await database.get<Task>('tasks').query().fetch();
+      logger.debug('Tasks fetched', { count: tasks.length });
+      return tasks;
+    } catch (error) {
+      logger.error('Error fetching all tasks', error as Error);
+      return [];
+    }
   }
 
   /**
    * Get tasks with filters
    */
   static async getTasks(filters?: FilterOption): Promise<Task[]> {
-    const allTasks = await this.getAllTasks();
-    
-    return allTasks.filter((task) => {
-      if (filters?.categoryId && task.categoryId !== filters.categoryId) {
-        return false;
-      }
+    try {
+      logger.debug('Fetching tasks with filters', { filters });
+      const allTasks = await this.getAllTasks();
       
-      if (filters?.status) {
-        if (filters.status === 'completed' && !task.isCompleted) {
+      const filteredTasks = allTasks.filter((task) => {
+        if (filters?.categoryId && task.categoryId !== filters.categoryId) {
           return false;
         }
-        if (filters.status === 'pending' && task.isCompleted) {
+        
+        if (filters?.status) {
+          if (filters.status === 'completed' && !task.isCompleted) {
+            return false;
+          }
+          if (filters.status === 'pending' && task.isCompleted) {
+            return false;
+          }
+          if (filters.status === 'overdue' && (task.isCompleted || !DateService.isPast(task.scheduledDate))) {
+            return false;
+          }
+        }
+        
+        if (filters?.date && task.scheduledDate !== filters.date) {
           return false;
         }
-        if (filters.status === 'overdue' && (task.isCompleted || !DateService.isPast(task.scheduledDate))) {
+        
+        if (filters?.priority && task.priority !== filters.priority) {
           return false;
         }
-      }
+        
+        return true;
+      });
       
-      if (filters?.date && task.scheduledDate !== filters.date) {
-        return false;
-      }
-      
-      if (filters?.priority && task.priority !== filters.priority) {
-        return false;
-      }
-      
-      return true;
-    });
+      logger.debug('Tasks filtered', { total: allTasks.length, filtered: filteredTasks.length });
+      return filteredTasks;
+    } catch (error) {
+      logger.error('Error fetching tasks with filters', error as Error, { filters });
+      return [];
+    }
   }
 
   /**
@@ -163,27 +190,37 @@ export class TaskRepository {
    * Mark task as completed
    */
   static async completeTask(taskId: string): Promise<Task> {
-    return await database.write(async () => {
-      const task = await database.get<Task>('tasks').find(taskId);
+    try {
+      logger.debug('Completing task', { taskId });
       const today = DateService.getToday();
       
-      // Create task completion record
-      await database.get('task_completions').create((completion) => {
-        completion.taskId = taskId;
-        completion.completedAt = Date.now();
-        completion.date = today;
-        completion.pointsEarned = task.rewardPoints;
-        completion.createdAt = Date.now();
-        completion.updatedAt = Date.now();
-      });
+      const task = await database.write(async () => {
+        const task = await database.get<Task>('tasks').find(taskId);
+        
+        // Create task completion record
+        await database.get('task_completions').create((completion) => {
+          completion.taskId = taskId;
+          completion.completedAt = Date.now();
+          completion.date = today;
+          completion.pointsEarned = task.rewardPoints;
+          completion.createdAt = Date.now();
+          completion.updatedAt = Date.now();
+        });
 
-      // Update task
-      return await task.update((task) => {
-        task.isCompleted = true;
-        task.status = 'completed';
-        task.updatedAt = Date.now();
+        // Update task
+        return await task.update((task) => {
+          task.isCompleted = true;
+          task.status = 'completed';
+          task.updatedAt = Date.now();
+        });
       });
-    });
+      
+      logger.info('Task completed', { taskId, points: task.rewardPoints });
+      return task;
+    } catch (error) {
+      logger.error('Error completing task', error as Error, { taskId });
+      throw error;
+    }
   }
 
   /**

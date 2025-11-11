@@ -7,6 +7,7 @@ import { TaskFormData } from '../types/task.types';
 import { FilterOption, SortOption } from '../types/common.types';
 import { DateService } from '../services/DateService';
 import { RewardService } from '../services/RewardService';
+import { logger } from '../utils/logger';
 
 interface TaskState {
   tasks: Task[];
@@ -40,15 +41,21 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   loadTasks: async () => {
     set({ loading: true, error: null });
     try {
+      logger.debug('Loading tasks from store');
       const { filters, sortBy } = get();
-      let tasks = await TaskRepository.getTasks(filters || undefined);
+      let tasks = await TaskRepository.getTasks(filters || undefined).catch((error) => {
+        logger.error('Error loading tasks in store', error);
+        return [];
+      });
       
       // Sort tasks
       tasks = sortTasks(tasks, sortBy);
       
+      logger.debug('Tasks loaded in store', { count: tasks.length });
       set({ tasks, loading: false });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      logger.error('Error in loadTasks store action', error);
+      set({ error: error?.message || 'خطا در بارگذاری کارها', loading: false, tasks: [] });
     }
   },
 

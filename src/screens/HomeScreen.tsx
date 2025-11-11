@@ -22,14 +22,34 @@ export const HomeScreen: React.FC = () => {
   const [todayPoints, setTodayPoints] = useState(0);
 
   useEffect(() => {
-    const refreshData = () => {
-      loadTasks();
-      loadCategories();
-      loadTodayCigarette();
-      loadTodayPoints();
+    const refreshData = async () => {
+      try {
+        await Promise.all([
+          loadTasks().catch((error) => {
+            console.warn('Error loading tasks:', error);
+          }),
+          loadCategories().catch((error) => {
+            console.warn('Error loading categories:', error);
+          }),
+          loadTodayCigarette().catch((error) => {
+            console.warn('Error loading cigarette data:', error);
+          }),
+          loadTodayPoints().catch((error) => {
+            console.warn('Error loading points:', error);
+          }),
+        ]);
+      } catch (error) {
+        console.error('Error refreshing data:', error);
+        // Continue even if some data fails to load
+      }
     };
     
-    refreshData();
+    // Delay data loading to ensure database is ready
+    const timer = setTimeout(() => {
+      refreshData();
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   const loadTodayPoints = async () => {

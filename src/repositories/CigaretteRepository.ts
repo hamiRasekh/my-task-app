@@ -1,6 +1,7 @@
 import { database } from '../database/database';
 import Cigarette from '../database/models/Cigarette';
 import { DateService } from '../services/DateService';
+import { logger } from '../utils/logger';
 
 export interface CigaretteData {
   date: string;
@@ -44,10 +45,17 @@ export class CigaretteRepository {
    */
   static async getCigaretteByDate(date: string): Promise<Cigarette | null> {
     try {
+      logger.debug('Getting cigarette by date', { date });
       const allCigarettes = await database.get<Cigarette>('cigarettes').query().fetch();
       const cigarette = allCigarettes.find((c) => c.date === date);
+      if (cigarette) {
+        logger.debug('Cigarette found', { cigaretteId: cigarette.id, count: cigarette.count });
+      } else {
+        logger.debug('Cigarette not found for date', { date });
+      }
       return cigarette || null;
     } catch (error) {
+      logger.error('Error getting cigarette by date', error as Error, { date });
       return null;
     }
   }
@@ -64,19 +72,29 @@ export class CigaretteRepository {
    * Get or create today's cigarette record
    */
   static async getOrCreateTodayCigarette(dailyLimit: number = 10): Promise<Cigarette> {
-    const today = DateService.getToday();
-    const existing = await this.getCigaretteByDate(today);
+    try {
+      logger.debug('Getting or creating today cigarette', { dailyLimit });
+      const today = DateService.getToday();
+      const existing = await this.getCigaretteByDate(today);
 
-    if (existing) {
-      return existing;
+      if (existing) {
+        logger.debug('Today cigarette found', { count: existing.count, limit: existing.dailyLimit });
+        return existing;
+      }
+
+      logger.debug('Creating new today cigarette record');
+      const cigarette = await this.upsertCigarette({
+        date: today,
+        count: 0,
+        dailyLimit,
+        timestamps: [],
+      });
+      logger.info('Today cigarette created', { cigaretteId: cigarette.id });
+      return cigarette;
+    } catch (error) {
+      logger.error('Error getting or creating today cigarette', error as Error);
+      throw error;
     }
-
-    return await this.upsertCigarette({
-      date: today,
-      count: 0,
-      dailyLimit,
-      timestamps: [],
-    });
   }
 
   /**
@@ -149,7 +167,15 @@ export class CigaretteRepository {
    * Get all cigarettes
    */
   static async getAllCigarettes(): Promise<Cigarette[]> {
-    return await database.get<Cigarette>('cigarettes').query().fetch();
+    try {
+      logger.debug('Fetching all cigarettes');
+      const cigarettes = await database.get<Cigarette>('cigarettes').query().fetch();
+      logger.debug('Cigarettes fetched', { count: cigarettes.length });
+      return cigarettes;
+    } catch (error) {
+      logger.error('Error fetching all cigarettes', error as Error);
+      return [];
+    }
   }
 
   /**

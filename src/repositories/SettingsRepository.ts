@@ -2,6 +2,7 @@ import { database } from '../database/database';
 import Settings from '../database/models/Settings';
 import { AppSettings, NotificationSettings, DisplaySettings } from '../types/settings.types';
 import { DEFAULT_TASK_PRIORITY, DEFAULT_CIGARETTE_LIMIT } from '../utils/constants';
+import { logger } from '../utils/logger';
 
 export class SettingsRepository {
   private static readonly SETTINGS_KEY = 'app_settings';
@@ -10,14 +11,24 @@ export class SettingsRepository {
    * Get app settings
    */
   static async getSettings(): Promise<AppSettings> {
-    const settingsRecord = await this.getSettingsRecord();
-    
-    if (settingsRecord) {
-      return settingsRecord.getValue<AppSettings>();
-    }
+    try {
+      if (!database) {
+        logger.warn('Database not available, returning default settings');
+        return this.getDefaultSettings();
+      }
+      
+      const settingsRecord = await this.getSettingsRecord();
+      
+      if (settingsRecord) {
+        return settingsRecord.getValue<AppSettings>();
+      }
 
-    // Return default settings
-    return this.getDefaultSettings();
+      // Return default settings
+      return this.getDefaultSettings();
+    } catch (error) {
+      logger.error('Error getting settings', error as Error);
+      return this.getDefaultSettings();
+    }
   }
 
   /**
@@ -150,18 +161,33 @@ export class SettingsRepository {
    * Initialize default settings
    */
   static async initializeDefaultSettings(): Promise<void> {
-    const existing = await this.getSettingsRecord();
-    
-    if (!existing) {
-      const defaultSettings = this.getDefaultSettings();
-      await database.write(async () => {
-        await database.get<Settings>('settings').create((s) => {
-          s.key = this.SETTINGS_KEY;
-          s.setValue(defaultSettings);
-          s.createdAt = Date.now();
-          s.updatedAt = Date.now();
+    try {
+      logger.debug('Initializing default settings');
+      const existing = await this.getSettingsRecord().catch(() => null);
+      
+      if (!existing) {
+        logger.info('Creating default settings');
+        const defaultSettings = this.getDefaultSettings();
+        await database.write(async () => {
+          try {
+            await database.get<Settings>('settings').create((s) => {
+              s.key = this.SETTINGS_KEY;
+              s.setValue(defaultSettings);
+              s.createdAt = Date.now();
+              s.updatedAt = Date.now();
+            });
+            logger.info('Default settings created successfully');
+          } catch (error) {
+            logger.warn('Error creating default settings', error as Error);
+            // Don't throw - settings will use defaults
+          }
         });
-      });
+      } else {
+        logger.debug('Settings already initialized');
+      }
+    } catch (error) {
+      logger.error('Error initializing default settings', error as Error);
+      // Don't throw - allow app to continue with default settings
     }
   }
 }

@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import { NOTIFICATION_CHANNELS } from '../utils/constants';
 import { DateService } from './DateService';
 import PersianDate from 'persian-date';
+import { logger } from '../utils/logger';
 
 // Configure notification handler
 Notifications.setNotificationHandler({
@@ -31,33 +32,38 @@ export class NotificationService {
    */
   async requestPermissions(): Promise<boolean> {
     try {
+      logger.debug('Requesting notification permissions');
       // Notifications are not supported on web
       if (Platform.OS === 'web') {
-        console.warn('Notifications are not supported on web');
+        logger.warn('Notifications are not supported on web');
         return false;
       }
 
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      logger.debug('Existing notification permission status', { status: existingStatus });
       let finalStatus = existingStatus;
 
       if (existingStatus !== 'granted') {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
+        logger.debug('Notification permission requested', { status });
       }
 
       if (finalStatus !== 'granted') {
-        console.warn('Notification permissions not granted');
+        logger.warn('Notification permissions not granted', { status: finalStatus });
         return false;
       }
 
       // Configure notification channels for Android
       if (Platform.OS === 'android') {
+        logger.debug('Setting up Android notification channels');
         await this.setupAndroidChannels();
       }
 
+      logger.info('Notification permissions granted');
       return true;
     } catch (error) {
-      console.error('Error requesting notification permissions:', error);
+      logger.error('Error requesting notification permissions', error as Error);
       return false;
     }
   }
