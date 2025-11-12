@@ -2,11 +2,17 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../theme';
+import Animated, {
+  FadeInDown,
+  FadeIn,
+} from 'react-native-reanimated';
+import { colors, typography, spacing, shadows } from '../theme';
 import { useSettingsStore } from '../store/settingsStore';
 import { ExportService } from '../services/ExportService';
 import { Alert } from 'react-native';
 import { AppLogo } from '../components/common/AppLogo';
+import { GradientBackground } from '../components/common/GradientBackground';
+import { GlassCard } from '../components/common/GlassCard';
 import { APP_NAME } from '../utils/constants';
 
 export const SettingsScreen: React.FC = () => {
@@ -45,24 +51,28 @@ export const SettingsScreen: React.FC = () => {
 
   if (loading || !settings) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.content}>
-          <Text style={styles.loadingText}>در حال بارگذاری...</Text>
-        </View>
-      </SafeAreaView>
+      <GradientBackground>
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.content}>
+            <Text style={styles.loadingText}>در حال بارگذاری...</Text>
+          </View>
+        </SafeAreaView>
+      </GradientBackground>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <AppLogo size="medium" />
-          <Text style={styles.subtitle}>تنظیمات</Text>
-        </View>
+    <GradientBackground>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+          <Animated.View style={styles.header} entering={FadeInDown.duration(600)}>
+            <AppLogo size="medium" />
+            <Text style={styles.subtitle}>تنظیمات</Text>
+          </Animated.View>
 
-        {/* Notification Settings */}
-        <View style={styles.section}>
+          {/* Notification Settings */}
+          <Animated.View entering={FadeIn.delay(100).duration(500)}>
+            <GlassCard intensity="medium" style={styles.section}>
           <Text style={styles.sectionTitle}>نوتیفیکیشن‌ها</Text>
           
           <View style={styles.settingRow}>
@@ -134,62 +144,70 @@ export const SettingsScreen: React.FC = () => {
               thumbColor={colors.text}
             />
           </View>
-        </View>
+            </GlassCard>
+          </Animated.View>
 
         {/* Display Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>نمایش</Text>
-          
-          <View style={styles.settingRow}>
-            <Text style={styles.settingLabel}>نمایش فشرده</Text>
-            <Switch
-              value={settings.display.compactView}
-              onValueChange={(value) => updateDisplaySettings({ compactView: value })}
-              trackColor={{ false: colors.surfaceVariant, true: colors.primary }}
-              thumbColor={colors.text}
-            />
-          </View>
-        </View>
+        <Animated.View entering={FadeIn.delay(200).duration(500)}>
+          <GlassCard intensity="medium" style={styles.section}>
+            <Text style={styles.sectionTitle}>نمایش</Text>
+            
+            <View style={styles.settingRow}>
+              <Text style={styles.settingLabel}>نمایش فشرده</Text>
+              <Switch
+                value={settings.display.compactView}
+                onValueChange={(value) => updateDisplaySettings({ compactView: value })}
+                trackColor={{ false: colors.glass, true: colors.primary }}
+                thumbColor={colors.text}
+              />
+            </View>
+          </GlassCard>
+        </Animated.View>
 
         {/* Backup & Export */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>پشتیبان‌گیری و Export</Text>
-          
-          <TouchableOpacity style={styles.actionButton} onPress={handleBackup}>
-            <Ionicons name="cloud-upload-outline" size={24} color={colors.primary} />
-            <Text style={styles.actionButtonText}>پشتیبان‌گیری</Text>
-          </TouchableOpacity>
+        <Animated.View entering={FadeIn.delay(300).duration(500)}>
+          <GlassCard intensity="medium" style={styles.section}>
+            <Text style={styles.sectionTitle}>پشتیبان‌گیری و Export</Text>
+            
+            <TouchableOpacity style={styles.actionButton} onPress={handleBackup}>
+              <Ionicons name="cloud-upload-outline" size={24} color={colors.primary} />
+              <Text style={styles.actionButtonText}>پشتیبان‌گیری</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.actionButton} onPress={handleExport}>
-            <Ionicons name="download-outline" size={24} color={colors.primary} />
-            <Text style={styles.actionButtonText}>Export داده‌ها</Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity style={styles.actionButton} onPress={handleExport}>
+              <Ionicons name="download-outline" size={24} color={colors.primary} />
+              <Text style={styles.actionButtonText}>Export داده‌ها</Text>
+            </TouchableOpacity>
+          </GlassCard>
+        </Animated.View>
 
         {/* App Info */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>درباره اپ</Text>
-          <View style={styles.appInfoContainer}>
-            <AppLogo size="small" showSubtitle />
-          </View>
-          <Text style={styles.infoText}>نسخه: 1.0.0</Text>
-          <Text style={styles.infoText}>مدیریت کار و ردیابی سیگار</Text>
-        </View>
+        <Animated.View entering={FadeIn.delay(400).duration(500)}>
+          <GlassCard intensity="medium" style={styles.section}>
+            <Text style={styles.sectionTitle}>درباره اپ</Text>
+            <View style={styles.appInfoContainer}>
+              <AppLogo size="small" showSubtitle />
+            </View>
+            <Text style={styles.infoText}>نسخه: 1.2.0</Text>
+            <Text style={styles.infoText}>مدیریت کار و ردیابی سیگار</Text>
+          </GlassCard>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
+    </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
   },
   content: {
     padding: spacing.md,
+    paddingBottom: 100,
   },
   header: {
     alignItems: 'center',
@@ -203,10 +221,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   section: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
     padding: spacing.md,
     marginBottom: spacing.md,
+    ...shadows.glass,
   },
   sectionTitle: {
     fontSize: typography.fontSize.lg,
@@ -220,7 +237,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.glassBorder,
   },
   settingLabel: {
     fontSize: typography.fontSize.md,
@@ -232,10 +249,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
-    backgroundColor: colors.surfaceVariant,
-    borderRadius: 8,
+    backgroundColor: colors.glass,
+    borderRadius: 12,
     marginBottom: spacing.sm,
     gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   actionButtonText: {
     fontSize: typography.fontSize.md,
@@ -247,6 +266,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.regular,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
+    textAlign: 'center',
   },
   appInfoContainer: {
     alignItems: 'center',
@@ -254,7 +274,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.glassBorder,
   },
   loadingText: {
     fontSize: typography.fontSize.md,

@@ -54,15 +54,29 @@ export const TabNavigator: React.FC = () => {
         tabBarInactiveTintColor: colors.textDisabled,
         tabBarStyle: {
           backgroundColor: colors.surface,
-          borderTopColor: colors.border,
+          borderTopColor: colors.glassBorder,
           borderTopWidth: 1,
-          paddingBottom: 8,
+          paddingBottom: 12,
           paddingTop: 8,
-          height: 60,
+          height: 70,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          elevation: 0,
+          shadowOpacity: 0,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          marginBottom: 0,
+          paddingHorizontal: 8,
         },
         tabBarLabelStyle: {
           fontFamily: typography.fontFamily.medium,
           fontSize: typography.fontSize.xs,
+          marginBottom: 4,
+        },
+        tabBarIconStyle: {
+          marginTop: 4,
         },
       }}
     >

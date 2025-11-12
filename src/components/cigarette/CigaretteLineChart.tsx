@@ -24,11 +24,11 @@ export const CigaretteLineChart: React.FC<CigaretteLineChartProps> = ({
   }
 
   const chartData = data.map((item, index) => ({
-    value: item.count,
+    value: item.count || 0,
     label: `${index + 1}`,
   }));
 
-  const maxValue = Math.max(...data.map(d => d.count), 10);
+  const maxValue = Math.max(...data.map(d => d.count || 0), 10);
 
   return (
     <View style={styles.container}>
@@ -42,14 +42,14 @@ export const CigaretteLineChart: React.FC<CigaretteLineChartProps> = ({
         color={colors.primary}
         hideRules
         hideYAxisText={false}
-        yAxisColor={colors.border}
-        xAxisColor={colors.border}
+        yAxisColor={colors.glassBorder}
+        xAxisColor={colors.glassBorder}
         yAxisTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
         maxValue={maxValue + 2}
         noOfSections={5}
         yAxisLabelWidth={40}
         showYAxisIndices
-        yAxisIndicesColor={colors.border}
+        yAxisIndicesColor={colors.glassBorder}
         curved
         areaChart
         startFillColor={colors.primary + '40'}
@@ -63,7 +63,7 @@ export const CigaretteLineChart: React.FC<CigaretteLineChartProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
+    backgroundColor: 'transparent',
     borderRadius: 12,
     padding: spacing.md,
     marginVertical: spacing.sm,

@@ -2,7 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../theme';
+import Animated, {
+  FadeInDown,
+  FadeIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from 'react-native-reanimated';
+import { colors, typography, spacing, shadows } from '../theme';
 import { ReportService } from '../services/ReportService';
 import { DateService } from '../services/DateService';
 import { RewardService } from '../services/RewardService';
@@ -12,6 +19,8 @@ import { BarChart } from 'react-native-gifted-charts';
 import { EmptyState } from '../components/common/EmptyState';
 import { LoadingSkeleton } from '../components/common/LoadingSkeleton';
 import { AppLogo } from '../components/common/AppLogo';
+import { GradientBackground } from '../components/common/GradientBackground';
+import { GlassCard } from '../components/common/GlassCard';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -47,28 +56,41 @@ export const ReportsScreen: React.FC = () => {
           startDate = DateService.addDays(today, -30);
       }
 
-      const [taskStatsData, cigaretteStatsData, cigaretteReportsData, pointsData, dailyTaskCompletion] = await Promise.all([
-        ReportService.getTaskStats(startDate, endDate),
-        ReportService.getCigaretteStats(startDate, endDate),
-        ReportService.getCigaretteReports(startDate, endDate),
-        RewardService.getTotalPoints(startDate, endDate),
-        ReportService.getDailyTaskCompletion(startDate, endDate),
+      const [taskStatsData, cigaretteStatsData, cigaretteReportsData, pointsData, dailyTaskCompletion] = await Promise.allSettled([
+        ReportService.getTaskStats(startDate, endDate).catch(() => ({ total: 0, completed: 0, overdue: 0, completionRate: 0 })),
+        ReportService.getCigaretteStats(startDate, endDate).catch(() => ({ today: 0, weekly: 0, monthly: 0, average: 0, streak: 0, percentage: 0 })),
+        ReportService.getCigaretteReports(startDate, endDate).catch(() => []),
+        RewardService.getTotalPoints(startDate, endDate).catch(() => 0),
+        ReportService.getDailyTaskCompletion(startDate, endDate).catch(() => new Map()),
       ]);
 
+      // Extract data safely
+      const taskStats = taskStatsData.status === 'fulfilled' ? taskStatsData.value : { total: 0, completed: 0, overdue: 0, completionRate: 0 };
+      const cigaretteStats = cigaretteStatsData.status === 'fulfilled' ? cigaretteStatsData.value : { today: 0, weekly: 0, monthly: 0, average: 0, streak: 0, percentage: 0 };
+      const cigaretteReports = cigaretteReportsData.status === 'fulfilled' ? cigaretteReportsData.value : [];
+      const points = pointsData.status === 'fulfilled' ? pointsData.value : 0;
+      const dailyTaskCompletionMap = dailyTaskCompletion.status === 'fulfilled' ? dailyTaskCompletion.value : new Map();
+
       // Convert daily task completion map to array
-      const dailyTaskArray = Array.from(dailyTaskCompletion.entries()).map(([date, stats]) => ({
+      const dailyTaskArray = Array.from(dailyTaskCompletionMap.entries()).map(([date, stats]) => ({
         date,
-        completed: stats.completed,
-        total: stats.total,
+        completed: stats.completed || 0,
+        total: stats.total || 0,
       })).sort((a, b) => DateService.compareDates(a.date, b.date));
 
-      setTaskStats(taskStatsData);
-      setCigaretteStats(cigaretteStatsData);
-      setCigaretteReports(cigaretteReportsData);
+      setTaskStats(taskStats);
+      setCigaretteStats(cigaretteStats);
+      setCigaretteReports(cigaretteReports);
       setDailyTaskData(dailyTaskArray);
-      setPoints(pointsData);
+      setPoints(points);
     } catch (error) {
       console.error('Error loading reports:', error);
+      // Set safe defaults on error
+      setTaskStats({ total: 0, completed: 0, overdue: 0, completionRate: 0 });
+      setCigaretteStats({ today: 0, weekly: 0, monthly: 0, average: 0, streak: 0, percentage: 0 });
+      setCigaretteReports([]);
+      setDailyTaskData([]);
+      setPoints(0);
     } finally {
       setLoading(false);
     }
@@ -76,51 +98,55 @@ export const ReportsScreen: React.FC = () => {
 
   const getTaskChartData = () => {
     if (dailyTaskData.length === 0) return [];
-    return dailyTaskData.map((item) => item.completed);
+    return dailyTaskData.map((item) => item.completed || 0);
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.content}>
-          <LoadingSkeleton width="100%" height={30} marginBottom={spacing.lg} />
-          <LoadingSkeleton width="100%" height={150} marginBottom={spacing.md} />
-          <LoadingSkeleton width="100%" height={150} marginBottom={spacing.md} />
-        </View>
-      </SafeAreaView>
+      <GradientBackground>
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <View style={styles.content}>
+            <LoadingSkeleton width="100%" height={30} marginBottom={spacing.lg} />
+            <LoadingSkeleton width="100%" height={150} marginBottom={spacing.md} />
+            <LoadingSkeleton width="100%" height={150} marginBottom={spacing.md} />
+          </View>
+        </SafeAreaView>
+      </GradientBackground>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <AppLogo size="medium" />
-          <Text style={styles.subtitle}>گزارش‌ها</Text>
-        </View>
+    <GradientBackground>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+          <Animated.View style={styles.header} entering={FadeInDown.duration(600)}>
+            <AppLogo size="medium" />
+            <Text style={styles.subtitle}>گزارش‌ها</Text>
+          </Animated.View>
 
-        <View style={styles.filterContainer}>
-          <TouchableOpacity
-            style={[styles.filterButton, dateRange === 'week' && styles.filterButtonActive]}
-            onPress={() => setDateRange('week')}
-          >
-            <Text style={[styles.filterButtonText, dateRange === 'week' && styles.filterButtonTextActive]}>
-              هفته
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.filterButton, dateRange === 'month' && styles.filterButtonActive]}
-            onPress={() => setDateRange('month')}
-          >
-            <Text style={[styles.filterButtonText, dateRange === 'month' && styles.filterButtonTextActive]}>
-              ماه
-            </Text>
-          </TouchableOpacity>
-        </View>
+          <Animated.View style={styles.filterContainer} entering={FadeInDown.delay(100).duration(500)}>
+            <TouchableOpacity
+              style={[styles.filterButton, dateRange === 'week' && styles.filterButtonActive]}
+              onPress={() => setDateRange('week')}
+            >
+              <Text style={[styles.filterButtonText, dateRange === 'week' && styles.filterButtonTextActive]}>
+                هفته
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.filterButton, dateRange === 'month' && styles.filterButtonActive]}
+              onPress={() => setDateRange('month')}
+            >
+              <Text style={[styles.filterButtonText, dateRange === 'month' && styles.filterButtonTextActive]}>
+                ماه
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
 
         {/* Task Stats */}
         {taskStats && (
-          <View style={styles.card}>
+          <Animated.View entering={FadeIn.delay(200).duration(500)}>
+            <GlassCard intensity="medium" style={styles.card}>
             <Text style={styles.cardTitle}>آمار کارها</Text>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
@@ -157,16 +183,16 @@ export const ReportsScreen: React.FC = () => {
               </View>
             </View>
 
-            {dailyTaskData.length > 0 && (
+            {dailyTaskData.length > 0 ? (
               <View style={styles.chartContainer}>
                 <Text style={styles.chartTitle}>کارهای انجام شده روزانه</Text>
                 <BarChart
                   data={getTaskChartData().map((value, index) => ({
-                    value: value,
+                    value: value || 0,
                     label: dailyTaskData[index] ? DateService.formatDate(dailyTaskData[index].date, 'MM/DD') : `${index + 1}`,
                     frontColor: colors.primary,
                     topLabelComponent: () => (
-                      <Text style={styles.topLabel}>{value}</Text>
+                      <Text style={styles.topLabel}>{value || 0}</Text>
                     ),
                   }))}
                   width={screenWidth - spacing.xl * 2}
@@ -177,25 +203,31 @@ export const ReportsScreen: React.FC = () => {
                   roundedBottom
                   hideRules
                   xAxisThickness={1}
-                  xAxisColor={colors.border}
+                  xAxisColor={colors.glassBorder}
                   yAxisThickness={1}
-                  yAxisColor={colors.border}
+                  yAxisColor={colors.glassBorder}
                   yAxisTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
-                  maxValue={Math.max(...dailyTaskData.map(d => d.completed), 5) + 2}
+                  maxValue={Math.max(...dailyTaskData.map(d => d.completed || 0), 5) + 2}
                   noOfSections={5}
                   yAxisLabelWidth={40}
                   showYAxisIndices
-                  yAxisIndicesColor={colors.border}
+                  yAxisIndicesColor={colors.glassBorder}
                   yAxisIndicesHeight={4}
                 />
               </View>
+            ) : (
+              <View style={styles.chartContainer}>
+                <Text style={styles.noChartDataText}>داده‌ای برای نمایش وجود ندارد</Text>
+              </View>
             )}
-          </View>
+            </GlassCard>
+          </Animated.View>
         )}
 
         {/* Cigarette Stats */}
         {cigaretteStats && (
-          <View style={styles.card}>
+          <Animated.View entering={FadeIn.delay(300).duration(500)}>
+            <GlassCard intensity="medium" style={styles.card}>
             <Text style={styles.cardTitle}>آمار سیگار</Text>
             <View style={styles.statsRow}>
               <View style={styles.statItem}>
@@ -234,33 +266,37 @@ export const ReportsScreen: React.FC = () => {
                 <CigaretteLineChart data={cigaretteReports} height={200} />
               </View>
             )}
-          </View>
+            </GlassCard>
+          </Animated.View>
         )}
 
         {/* Points */}
-        <View style={styles.card}>
+        <Animated.View entering={FadeIn.delay(400).duration(500)}>
+          <GlassCard intensity="medium" style={styles.card}>
           <Text style={styles.cardTitle}>امتیازات</Text>
           <View style={styles.pointsContainer}>
             <Ionicons name="star" size={48} color={colors.warning} />
             <Text style={styles.pointsValue}>{points}</Text>
             <Text style={styles.pointsLabel}>امتیاز کل</Text>
           </View>
-        </View>
+          </GlassCard>
+        </Animated.View>
       </ScrollView>
     </SafeAreaView>
+    </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
   },
   content: {
     padding: spacing.md,
+    paddingBottom: 100,
   },
   header: {
     alignItems: 'center',
@@ -281,15 +317,17 @@ const styles = StyleSheet.create({
   filterButton: {
     flex: 1,
     padding: spacing.sm,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceVariant,
+    borderRadius: 16,
+    backgroundColor: colors.glass,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    ...shadows.glass,
   },
   filterButtonActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primary + '40',
     borderColor: colors.primary,
+    ...shadows.glow,
   },
   filterButtonText: {
     fontSize: typography.fontSize.md,
@@ -301,10 +339,9 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.bold,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
     padding: spacing.md,
     marginBottom: spacing.md,
+    ...shadows.glass,
   },
   cardTitle: {
     fontSize: typography.fontSize.lg,
@@ -345,9 +382,11 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 8,
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.glass,
     borderRadius: 4,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   progressFill: {
     height: '100%',
@@ -390,5 +429,12 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: colors.text,
     fontFamily: typography.fontFamily.medium,
+  },
+  noChartDataText: {
+    fontSize: typography.fontSize.md,
+    fontFamily: typography.fontFamily.regular,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    padding: spacing.xl,
   },
 });

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../../theme';
+import Animated, { SlideInDown } from 'react-native-reanimated';
+import { colors, typography, spacing, shadows } from '../../theme';
+import { GlassCard } from '../common/GlassCard';
 import { DateService } from '../../services/DateService';
 import PersianDate from 'persian-date';
 
@@ -95,8 +97,9 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.header}>
+        <Animated.View entering={SlideInDown.duration(300)} style={styles.modalContent}>
+          <GlassCard intensity="strong" style={styles.modalGlassCard}>
+            <View style={styles.header}>
             <Text style={styles.title}>{title}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={colors.text} />
@@ -227,7 +230,8 @@ export const DatePickerModal: React.FC<DatePickerModalProps> = ({
               <Text style={styles.confirmButtonText}>تأیید</Text>
             </TouchableOpacity>
           </View>
-        </View>
+          </GlassCard>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -240,10 +244,15 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '90%',
+    overflow: 'hidden',
+  },
+  modalGlassCard: {
+    borderRadius: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingTop: spacing.md,
   },
   header: {
@@ -253,7 +262,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.glassBorder,
   },
   title: {
     fontSize: typography.fontSize.xl,
@@ -264,9 +273,11 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.glass,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   content: {
     flex: 1,
@@ -282,14 +293,15 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: spacing.sm,
     borderRadius: 12,
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.glass,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   quickDateButtonActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primary + '40',
     borderColor: colors.primary,
+    ...shadows.glow,
   },
   quickDateButtonText: {
     fontSize: typography.fontSize.sm,
@@ -325,10 +337,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginVertical: 2,
     alignItems: 'center',
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   pickerItemActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primary + '40',
+    borderColor: colors.primary,
+    ...shadows.glow,
   },
   pickerItemText: {
     fontSize: typography.fontSize.md,
@@ -340,11 +356,13 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.bold,
   },
   selectedDateContainer: {
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.glass,
     borderRadius: 12,
     padding: spacing.md,
     alignItems: 'center',
     marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   selectedDateLabel: {
     fontSize: typography.fontSize.sm,
@@ -367,10 +385,12 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.glass,
     borderRadius: 12,
     padding: spacing.md,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   cancelButtonText: {
     color: colors.text,
@@ -383,6 +403,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: spacing.md,
     alignItems: 'center',
+    ...shadows.glow,
   },
   confirmButtonText: {
     color: colors.text,

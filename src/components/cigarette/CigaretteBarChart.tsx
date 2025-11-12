@@ -24,15 +24,15 @@ export const CigaretteBarChart: React.FC<CigaretteBarChartProps> = ({
   }
 
   const chartData = data.map((item, index) => ({
-    value: item.count,
+    value: item.count || 0,
     label: `${index + 1}`,
-    frontColor: item.count > item.limit ? colors.error : colors.primary,
+    frontColor: (item.count || 0) > (item.limit || 0) ? colors.error : colors.primary,
     topLabelComponent: () => (
-      <Text style={styles.topLabel}>{item.count}</Text>
+      <Text style={styles.topLabel}>{item.count || 0}</Text>
     ),
   }));
 
-  const maxValue = Math.max(...data.map(d => d.count), 10);
+  const maxValue = Math.max(...data.map(d => d.count || 0), 10);
 
   return (
     <View style={styles.container}>
@@ -47,15 +47,15 @@ export const CigaretteBarChart: React.FC<CigaretteBarChartProps> = ({
         roundedBottom
         hideRules
         xAxisThickness={1}
-        xAxisColor={colors.border}
+        xAxisColor={colors.glassBorder}
         yAxisThickness={1}
-        yAxisColor={colors.border}
+        yAxisColor={colors.glassBorder}
         yAxisTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
         maxValue={maxValue + 2}
         noOfSections={5}
         yAxisLabelWidth={40}
         showYAxisIndices
-        yAxisIndicesColor={colors.border}
+        yAxisIndicesColor={colors.glassBorder}
         yAxisIndicesHeight={4}
       />
     </View>
@@ -64,7 +64,7 @@ export const CigaretteBarChart: React.FC<CigaretteBarChartProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: colors.surface,
+    backgroundColor: 'transparent',
     borderRadius: 12,
     padding: spacing.md,
     marginVertical: spacing.sm,

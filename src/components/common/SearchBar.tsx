@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../../theme';
+import { colors, typography, spacing, shadows } from '../../theme';
 
 interface SearchBarProps {
   searchText: string;
@@ -42,12 +42,13 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surfaceVariant,
-    borderRadius: 12,
+    backgroundColor: colors.glass,
+    borderRadius: 16,
     paddingHorizontal: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.glassBorder,
     gap: spacing.sm,
+    ...shadows.glass,
   },
   icon: {
     marginLeft: spacing.xs,

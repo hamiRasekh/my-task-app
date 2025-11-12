@@ -2,6 +2,9 @@
  * Comprehensive logging utility for debugging
  */
 
+import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
+
 export enum LogLevel {
   DEBUG = 'DEBUG',
   INFO = 'INFO',
@@ -21,6 +24,7 @@ class Logger {
   private logs: LogEntry[] = [];
   private maxLogs = 1000;
   private isDebugMode = true; // Always enable debug mode for comprehensive logging
+  private logFilePath: string | null = null;
 
   /**
    * Log a debug message
@@ -53,6 +57,52 @@ class Logger {
   }
 
   /**
+   * Initialize log file
+   */
+  private async initializeLogFile(): Promise<void> {
+    if (this.logFilePath) return;
+    
+    try {
+      if (Platform.OS !== 'web') {
+        const logDir = `${FileSystem.documentDirectory}logs/`;
+        const dirInfo = await FileSystem.getInfoAsync(logDir);
+        if (!dirInfo.exists) {
+          await FileSystem.makeDirectoryAsync(logDir, { intermediates: true });
+        }
+        
+        const fileName = `app-logs-${new Date().toISOString().split('T')[0]}.json`;
+        this.logFilePath = `${logDir}${fileName}`;
+      }
+    } catch (error) {
+      console.error('Error initializing log file:', error);
+    }
+  }
+
+  /**
+   * Write log to file
+   */
+  private async writeToFile(entry: LogEntry): Promise<void> {
+    try {
+      await this.initializeLogFile();
+      if (!this.logFilePath || Platform.OS === 'web') return;
+
+      const logLine = JSON.stringify(entry) + '\n';
+      await FileSystem.appendAsStringAsync(this.logFilePath, logLine);
+    } catch (error) {
+      // Silently fail - don't break app if file writing fails
+      console.error('Error writing to log file:', error);
+    }
+  }
+
+  /**
+   * Get log file path
+   */
+  async getLogFilePath(): Promise<string | null> {
+    await this.initializeLogFile();
+    return this.logFilePath;
+  }
+
+  /**
    * Internal log method
    */
   private log(level: LogLevel, message: string, data?: any): void {
@@ -69,6 +119,11 @@ class Logger {
     if (this.logs.length > this.maxLogs) {
       this.logs.shift();
     }
+
+    // Write to file asynchronously
+    this.writeToFile(entry).catch(() => {
+      // Silently fail
+    });
 
     // Always log to console for comprehensive debugging
     const logMessage = `[${level}] ${message}`;

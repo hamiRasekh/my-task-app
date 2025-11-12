@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal, Switch } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Modal, Switch, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../../theme';
+import Animated, {
+  SlideInDown,
+  FadeIn,
+} from 'react-native-reanimated';
+import { colors, typography, spacing, shadows } from '../../theme';
+import { GlassCard } from '../common/GlassCard';
 import { useTaskStore } from '../../store/taskStore';
 import { useUIStore } from '../../store/uiStore';
 import { TaskFormData } from '../../types/task.types';
@@ -125,6 +130,11 @@ export const TaskModal: React.FC = () => {
       closeTaskModal();
     } catch (error) {
       console.error('Error saving task:', error);
+      // Log error for debugging
+      const { logger } = await import('../../utils/logger');
+      logger.error('Error saving task in TaskModal', error);
+      // Show user-friendly error message
+      Alert.alert('خطا', 'خطا در ذخیره کار. لطفاً دوباره تلاش کنید.');
     }
   };
 
@@ -147,8 +157,12 @@ export const TaskModal: React.FC = () => {
         onRequestClose={closeTaskModal}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.header}>
+          <Animated.View
+            entering={SlideInDown.duration(300)}
+            style={styles.modalContent}
+          >
+            <GlassCard intensity="strong" style={styles.modalGlassCard}>
+              <View style={styles.header}>
               <Text style={styles.title}>
                 {selectedTaskId ? 'ویرایش کار' : 'کار جدید'}
               </Text>
@@ -403,7 +417,8 @@ export const TaskModal: React.FC = () => {
                 </TouchableOpacity>
               </View>
             </ScrollView>
-          </View>
+            </GlassCard>
+          </Animated.View>
         </View>
       </Modal>
 
@@ -461,10 +476,15 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     maxHeight: '95%',
+    overflow: 'hidden',
+  },
+  modalGlassCard: {
+    borderRadius: 0,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingTop: spacing.md,
   },
   header: {
@@ -474,7 +494,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.glassBorder,
   },
   title: {
     fontSize: typography.fontSize.xxl,
@@ -496,14 +516,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   input: {
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.glass,
     borderRadius: 12,
     padding: spacing.md,
     color: colors.text,
     fontSize: typography.fontSize.md,
     fontFamily: typography.fontFamily.regular,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.glassBorder,
   },
   textArea: {
     height: 80,
@@ -512,11 +532,11 @@ const styles = StyleSheet.create({
   dateTimeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.glass,
     borderRadius: 12,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.glassBorder,
     gap: spacing.sm,
   },
   dateTimeButtonText: {
@@ -540,14 +560,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: spacing.sm,
     borderRadius: 12,
-    backgroundColor: colors.surfaceVariant,
-    borderWidth: 2,
-    borderColor: 'transparent',
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
     gap: spacing.xs,
   },
   priorityButtonActive: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.primary + '40',
     borderColor: colors.primary,
+    ...shadows.glow,
   },
   priorityButtonText: {
     fontSize: typography.fontSize.sm,
@@ -563,8 +584,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.md,
     padding: spacing.sm,
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.glass,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   switchLabelContainer: {
     flexDirection: 'row',
@@ -585,11 +608,11 @@ const styles = StyleSheet.create({
   },
   pointInputContainer: {
     flex: 1,
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.glass,
     borderRadius: 12,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.glassBorder,
   },
   pointLabel: {
     fontSize: typography.fontSize.xs,
@@ -612,10 +635,12 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.glass,
     borderRadius: 12,
     padding: spacing.md,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   cancelButtonText: {
     color: colors.text,
@@ -628,6 +653,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: spacing.md,
     alignItems: 'center',
+    ...shadows.glow,
   },
   saveButtonDisabled: {
     opacity: 0.5,

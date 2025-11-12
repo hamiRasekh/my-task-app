@@ -2,7 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../theme';
+import Animated, {
+  FadeInDown,
+  FadeIn,
+  SlideInDown,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { colors, typography, spacing, shadows } from '../theme';
 import { useCigaretteStore } from '../store/cigaretteStore';
 import { LoadingSkeleton } from '../components/common/LoadingSkeleton';
 import { EmptyState } from '../components/common/EmptyState';
@@ -11,6 +20,8 @@ import { DateService } from '../services/DateService';
 import { ReportService } from '../services/ReportService';
 import { CigaretteLineChart } from '../components/cigarette/CigaretteLineChart';
 import { AppLogo } from '../components/common/AppLogo';
+import { GradientBackground } from '../components/common/GradientBackground';
+import { GlassCard } from '../components/common/GlassCard';
 
 export const CigaretteTrackerScreen: React.FC = () => {
   const { todayCigarette, loading, loadTodayCigarette, addCigarette, removeCigarette, setDailyLimit } = useCigaretteStore();
@@ -60,17 +71,21 @@ export const CigaretteTrackerScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <LoadingSkeleton width="100%" height={200} />
-      </SafeAreaView>
+      <GradientBackground>
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <LoadingSkeleton width="100%" height={200} />
+        </SafeAreaView>
+      </GradientBackground>
     );
   }
 
   if (!todayCigarette) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
-        <EmptyState title="خطا در بارگذاری داده‌ها" />
-      </SafeAreaView>
+      <GradientBackground>
+        <SafeAreaView style={styles.container} edges={['top']}>
+          <EmptyState title="خطا در بارگذاری داده‌ها" />
+        </SafeAreaView>
+      </GradientBackground>
     );
   }
 
@@ -79,108 +94,120 @@ export const CigaretteTrackerScreen: React.FC = () => {
     : 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <AppLogo size="medium" />
-          <Text style={styles.subtitle}>ردیابی سیگار</Text>
-        </View>
-        
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <Text style={styles.cardTitle}>امروز</Text>
-            <TouchableOpacity
-              onPress={() => setLimitModalVisible(true)}
-              style={styles.limitButton}
-            >
-              <Ionicons name="settings-outline" size={20} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
+    <GradientBackground>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+          <Animated.View style={styles.header} entering={FadeInDown.duration(600)}>
+            <AppLogo size="medium" />
+            <Text style={styles.subtitle}>ردیابی سیگار</Text>
+          </Animated.View>
           
-          <View style={styles.counter}>
-            <TouchableOpacity
-              style={[styles.button, styles.removeButton, todayCigarette.count === 0 && styles.buttonDisabled]}
-              onPress={handleRemove}
-              disabled={todayCigarette.count === 0}
-            >
-              <Ionicons name="remove" size={32} color={todayCigarette.count === 0 ? colors.textDisabled : colors.text} />
-            </TouchableOpacity>
-            
-            <View style={styles.countContainer}>
-              <Text style={styles.count}>{todayCigarette.count}</Text>
-              <Text style={styles.limit}>/{todayCigarette.dailyLimit}</Text>
-            </View>
-            
-            <TouchableOpacity
-              style={[styles.button, styles.addButton]}
-              onPress={handleAdd}
-            >
-              <Ionicons name="add" size={32} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.chartContainer}>
-            <CigaretteCircularChart cigarette={todayCigarette} size={180} />
-          </View>
-        </View>
+          <Animated.View entering={FadeIn.delay(200).duration(500)}>
+            <GlassCard intensity="medium" style={styles.card}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle}>امروز</Text>
+                <TouchableOpacity
+                  onPress={() => setLimitModalVisible(true)}
+                  style={styles.limitButton}
+                >
+                  <Ionicons name="settings-outline" size={20} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.counter}>
+                <Animated.View entering={FadeInDown.delay(300).duration(400)}>
+                  <TouchableOpacity
+                    style={[styles.button, styles.removeButton, todayCigarette.count === 0 && styles.buttonDisabled]}
+                    onPress={handleRemove}
+                    disabled={todayCigarette.count === 0}
+                  >
+                    <Ionicons name="remove" size={32} color={todayCigarette.count === 0 ? colors.textDisabled : colors.text} />
+                  </TouchableOpacity>
+                </Animated.View>
+                
+                <Animated.View style={styles.countContainer} entering={FadeIn.delay(400).duration(500)}>
+                  <Text style={styles.count}>{todayCigarette.count}</Text>
+                  <Text style={styles.limit}>/{todayCigarette.dailyLimit}</Text>
+                </Animated.View>
+                
+                <Animated.View entering={FadeInDown.delay(500).duration(400)}>
+                  <TouchableOpacity
+                    style={[styles.button, styles.addButton]}
+                    onPress={handleAdd}
+                  >
+                    <Ionicons name="add" size={32} color={colors.text} />
+                  </TouchableOpacity>
+                </Animated.View>
+              </View>
+              
+              <Animated.View style={styles.chartContainer} entering={FadeIn.delay(600).duration(500)}>
+                <CigaretteCircularChart cigarette={todayCigarette} size={180} />
+              </Animated.View>
+            </GlassCard>
+          </Animated.View>
 
-        {weeklyData.length > 0 && (
-          <View style={styles.chartCard}>
-            <Text style={styles.chartTitle}>روند هفتگی</Text>
-            <CigaretteLineChart data={weeklyData} height={200} />
-          </View>
-        )}
-      </ScrollView>
+          {weeklyData.length > 0 && (
+            <Animated.View entering={FadeIn.delay(700).duration(500)}>
+              <GlassCard intensity="medium" style={styles.chartCard}>
+                <Text style={styles.chartTitle}>روند هفتگی</Text>
+                <CigaretteLineChart data={weeklyData} height={200} />
+              </GlassCard>
+            </Animated.View>
+          )}
+        </ScrollView>
 
-      <Modal
-        visible={limitModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setLimitModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>تعیین حد مجاز روزانه</Text>
-            <Text style={styles.modalLabel}>حد مجاز:</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={newLimit}
-              onChangeText={setNewLimit}
-              keyboardType="numeric"
-              placeholder="10"
-              placeholderTextColor={colors.textDisabled}
-            />
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.modalCancelButton}
-                onPress={() => setLimitModalVisible(false)}
-              >
-                <Text style={styles.modalButtonText}>انصراف</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalSaveButton}
-                onPress={handleSetLimit}
-              >
-                <Text style={styles.modalButtonText}>ذخیره</Text>
-              </TouchableOpacity>
-            </View>
+        <Modal
+          visible={limitModalVisible}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setLimitModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <Animated.View entering={SlideInDown.duration(300)} style={styles.modalContent}>
+              <GlassCard intensity="strong" style={styles.modalGlassCard}>
+                <Text style={styles.modalTitle}>تعیین حد مجاز روزانه</Text>
+                <Text style={styles.modalLabel}>حد مجاز:</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  value={newLimit}
+                  onChangeText={setNewLimit}
+                  keyboardType="numeric"
+                  placeholder="10"
+                  placeholderTextColor={colors.textDisabled}
+                />
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity
+                    style={styles.modalCancelButton}
+                    onPress={() => setLimitModalVisible(false)}
+                  >
+                    <Text style={styles.modalButtonText}>انصراف</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.modalSaveButton}
+                    onPress={handleSetLimit}
+                  >
+                    <Text style={styles.modalButtonText}>ذخیره</Text>
+                  </TouchableOpacity>
+                </View>
+              </GlassCard>
+            </Animated.View>
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+      </SafeAreaView>
+    </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
   },
   content: {
     padding: spacing.md,
+    paddingBottom: 100,
   },
   header: {
     alignItems: 'center',
@@ -194,10 +221,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
     padding: spacing.xl,
     marginBottom: spacing.md,
+    ...shadows.glass,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -225,7 +251,10 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.glass,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
+    ...shadows.glass,
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -256,10 +285,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   chartCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
     padding: spacing.md,
     marginTop: spacing.md,
+    ...shadows.glass,
   },
   chartTitle: {
     fontSize: typography.fontSize.lg,
@@ -275,11 +303,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.xl,
+    borderRadius: 24,
     width: '80%',
     maxWidth: 400,
+    overflow: 'hidden',
+  },
+  modalGlassCard: {
+    padding: spacing.xl,
   },
   modalTitle: {
     fontSize: typography.fontSize.xl,
@@ -295,14 +325,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   modalInput: {
-    backgroundColor: colors.surfaceVariant,
-    borderRadius: 8,
+    backgroundColor: colors.glass,
+    borderRadius: 12,
     padding: spacing.md,
     color: colors.text,
     fontSize: typography.fontSize.md,
     fontFamily: typography.fontFamily.regular,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.glassBorder,
     marginBottom: spacing.lg,
   },
   modalButtons: {
@@ -312,17 +342,20 @@ const styles = StyleSheet.create({
   },
   modalCancelButton: {
     flex: 1,
-    backgroundColor: colors.surfaceVariant,
-    borderRadius: 8,
+    backgroundColor: colors.glass,
+    borderRadius: 12,
     padding: spacing.md,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   modalSaveButton: {
     flex: 1,
     backgroundColor: colors.primary,
-    borderRadius: 8,
+    borderRadius: 12,
     padding: spacing.md,
     alignItems: 'center',
+    ...shadows.glow,
   },
   modalButtonText: {
     color: colors.text,

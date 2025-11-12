@@ -42,7 +42,7 @@ export const CigaretteCircularChart: React.FC<CigaretteCircularChartProps> = ({
   if (remaining > 0) {
     pieData.push({
       value: remaining,
-      color: colors.surfaceVariant,
+      color: colors.glassBorder,
       label: 'باقیمانده',
     });
   }
@@ -59,7 +59,7 @@ export const CigaretteCircularChart: React.FC<CigaretteCircularChartProps> = ({
   if (pieData.length === 0) {
     pieData.push({
       value: 100,
-      color: colors.surfaceVariant,
+      color: colors.glassBorder,
     });
   }
 
@@ -94,7 +94,7 @@ export const CigaretteCircularChart: React.FC<CigaretteCircularChartProps> = ({
           )}
           {remaining > 0 && (
             <View style={styles.legendItem}>
-              <View style={[styles.legendColor, { backgroundColor: colors.surfaceVariant }]} />
+              <View style={[styles.legendColor, { backgroundColor: colors.glassBorder }]} />
               <Text style={styles.legendText}>باقیمانده</Text>
             </View>
           )}

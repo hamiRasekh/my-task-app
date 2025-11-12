@@ -2,7 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../theme';
+import Animated, {
+  FadeInDown,
+  FadeIn,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withRepeat,
+  withTiming,
+  interpolate,
+} from 'react-native-reanimated';
+import { colors, typography, spacing, shadows } from '../theme';
 import { useTaskStore } from '../store/taskStore';
 import { useCigaretteStore } from '../store/cigaretteStore';
 import { useUIStore } from '../store/uiStore';
@@ -13,6 +23,8 @@ import { TaskCard } from '../components/task/TaskCard';
 import { EmptyState } from '../components/common/EmptyState';
 import { TaskModal } from '../components/modals/TaskModal';
 import { AppLogo } from '../components/common/AppLogo';
+import { GradientBackground } from '../components/common/GradientBackground';
+import { GlassCard } from '../components/common/GlassCard';
 import Task from '../database/models/Task';
 
 export const HomeScreen: React.FC = () => {
@@ -80,98 +92,123 @@ export const HomeScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <AppLogo size="medium" />
-          <Text style={styles.subtitle}>خانه</Text>
-        </View>
-        
-        {/* Stats Cards */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Ionicons name="checkmark-circle" size={32} color={colors.success} />
-            <Text style={styles.statValue}>{completedTodayTasks}</Text>
-            <Text style={styles.statLabel}>انجام شده</Text>
+    <GradientBackground>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+          <Animated.View style={styles.header} entering={FadeInDown.duration(600)}>
+            <AppLogo size="medium" />
+            <Text style={styles.subtitle}>خانه</Text>
+          </Animated.View>
+          
+          {/* Stats Cards */}
+          <View style={styles.statsContainer}>
+            <Animated.View
+              entering={FadeInDown.delay(100).duration(500)}
+              style={styles.statCardWrapper}
+            >
+              <GlassCard intensity="medium" style={styles.statCard}>
+                <Ionicons name="checkmark-circle" size={32} color={colors.success} />
+                <Text style={styles.statValue}>{completedTodayTasks}</Text>
+                <Text style={styles.statLabel}>انجام شده</Text>
+              </GlassCard>
+            </Animated.View>
+            <Animated.View
+              entering={FadeInDown.delay(200).duration(500)}
+              style={styles.statCardWrapper}
+            >
+              <GlassCard intensity="medium" style={styles.statCard}>
+                <Ionicons name="time" size={32} color={colors.warning} />
+                <Text style={styles.statValue}>{todayTasks.length}</Text>
+                <Text style={styles.statLabel}>باقیمانده</Text>
+              </GlassCard>
+            </Animated.View>
+            <Animated.View
+              entering={FadeInDown.delay(300).duration(500)}
+              style={styles.statCardWrapper}
+            >
+              <GlassCard intensity="medium" style={styles.statCard}>
+                <Ionicons name="star" size={32} color={colors.primary} />
+                <Text style={styles.statValue}>{todayPoints}</Text>
+                <Text style={styles.statLabel}>امتیاز</Text>
+              </GlassCard>
+            </Animated.View>
           </View>
-          <View style={styles.statCard}>
-            <Ionicons name="time" size={32} color={colors.warning} />
-            <Text style={styles.statValue}>{todayTasks.length}</Text>
-            <Text style={styles.statLabel}>باقیمانده</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons name="star" size={32} color={colors.primary} />
-            <Text style={styles.statValue}>{todayPoints}</Text>
-            <Text style={styles.statLabel}>امتیاز</Text>
-          </View>
-        </View>
 
-        {/* Cigarette Card */}
-        {todayCigarette && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>سیگار امروز</Text>
-            <View style={styles.cigaretteContainer}>
-              <View style={styles.cigaretteInfo}>
-                <Text style={styles.cigaretteCount}>
-                  {todayCigarette.count} / {todayCigarette.dailyLimit}
-                </Text>
-                <Text style={styles.cigarettePercentage}>
-                  {Math.round((todayCigarette.count / todayCigarette.dailyLimit) * 100)}%
-                </Text>
-              </View>
-              <CigaretteCircularChart cigarette={todayCigarette} size={120} />
-            </View>
-          </View>
-        )}
-
-        {/* Today's Tasks */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>کارهای امروز</Text>
-            <TouchableOpacity onPress={() => openTaskModal()}>
-              <Ionicons name="add-circle" size={24} color={colors.primary} />
-            </TouchableOpacity>
-          </View>
-          {todayTasks.length > 0 ? (
-            <>
-              {todayTasks.map((task) => (
-                <TaskCard
-                  key={task.id}
-                  task={task}
-                  onPress={() => openTaskModal(task.id)}
-                  onComplete={() => handleCompleteTask(task.id)}
-                  onDelete={() => handleDeleteTask(task.id)}
-                />
-              ))}
-              {allTodayTasks.length > 5 && (
-                <Text style={styles.moreText}>
-                  و {allTodayTasks.length - 5} کار دیگر...
-                </Text>
-              )}
-            </>
-          ) : (
-            <EmptyState
-              title="هیچ کاری برای امروز ندارید"
-              message="برای افزودن کار جدید، دکمه + را بزنید"
-            />
+          {/* Cigarette Card */}
+          {todayCigarette && (
+            <Animated.View entering={FadeIn.delay(400).duration(500)}>
+              <GlassCard intensity="medium" style={styles.section}>
+                <Text style={styles.sectionTitle}>سیگار امروز</Text>
+                <View style={styles.cigaretteContainer}>
+                  <View style={styles.cigaretteInfo}>
+                    <Text style={styles.cigaretteCount}>
+                      {todayCigarette.count} / {todayCigarette.dailyLimit}
+                    </Text>
+                    <Text style={styles.cigarettePercentage}>
+                      {Math.round((todayCigarette.count / todayCigarette.dailyLimit) * 100)}%
+                    </Text>
+                  </View>
+                  <CigaretteCircularChart cigarette={todayCigarette} size={120} />
+                </View>
+              </GlassCard>
+            </Animated.View>
           )}
-        </View>
-      </ScrollView>
-      <TaskModal />
-    </SafeAreaView>
+
+          {/* Today's Tasks */}
+          <Animated.View entering={FadeIn.delay(500).duration(500)}>
+            <GlassCard intensity="medium" style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>کارهای امروز</Text>
+                <TouchableOpacity onPress={() => openTaskModal()}>
+                  <Ionicons name="add-circle" size={24} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+              {todayTasks.length > 0 ? (
+                <>
+                  {todayTasks.map((task, index) => (
+                    <Animated.View
+                      key={task.id}
+                      entering={FadeInDown.delay(600 + index * 100).duration(400)}
+                    >
+                      <TaskCard
+                        task={task}
+                        onPress={() => openTaskModal(task.id)}
+                        onComplete={() => handleCompleteTask(task.id)}
+                        onDelete={() => handleDeleteTask(task.id)}
+                      />
+                    </Animated.View>
+                  ))}
+                  {allTodayTasks.length > 5 && (
+                    <Text style={styles.moreText}>
+                      و {allTodayTasks.length - 5} کار دیگر...
+                    </Text>
+                  )}
+                </>
+              ) : (
+                <EmptyState
+                  title="هیچ کاری برای امروز ندارید"
+                  message="برای افزودن کار جدید، دکمه + را بزنید"
+                />
+              )}
+            </GlassCard>
+          </Animated.View>
+        </ScrollView>
+        <TaskModal />
+      </SafeAreaView>
+    </GradientBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
   },
   content: {
     padding: spacing.md,
+    paddingBottom: 100, // Space for tab bar
   },
   header: {
     alignItems: 'center',
@@ -190,12 +227,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     gap: spacing.sm,
   },
-  statCard: {
+  statCardWrapper: {
     flex: 1,
-    backgroundColor: colors.surface,
+  },
+  statCard: {
     padding: spacing.md,
-    borderRadius: 12,
     alignItems: 'center',
+    ...shadows.glass,
   },
   statValue: {
     fontSize: typography.fontSize.xxl,
@@ -210,10 +248,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   section: {
-    backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: 12,
     marginBottom: spacing.md,
+    ...shadows.glass,
   },
   sectionHeader: {
     flexDirection: 'row',

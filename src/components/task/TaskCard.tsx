@@ -1,7 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../../theme';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { colors, typography, spacing, shadows } from '../../theme';
+import { GlassCard } from '../common/GlassCard';
 import Task from '../../database/models/Task';
 import { formatPriority, formatTaskStatus } from '../../utils/formatters';
 import { DateService } from '../../services/DateService';
@@ -37,10 +44,36 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   };
 
   const isOverdue = !task.isCompleted && DateService.isPast(task.scheduledDate);
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ scale: scale.value }],
+    };
+  });
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.98);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1);
+  };
 
   return (
-    <View style={[styles.container, isOverdue && styles.overdueContainer]}>
-      <TouchableOpacity style={styles.content} onPress={onPress} activeOpacity={0.7}>
+    <Animated.View style={[styles.container, animatedStyle]}>
+      <GlassCard
+        intensity="medium"
+        style={[styles.card, isOverdue && styles.overdueContainer]}
+        borderGlow={!isOverdue}
+      >
+        <TouchableOpacity
+          style={styles.content}
+          onPress={onPress}
+          onPressIn={handlePressIn}
+          onPressOut={handlePressOut}
+          activeOpacity={0.7}
+        >
         <View style={styles.header}>
           <View style={styles.titleContainer}>
             <Text
@@ -107,32 +140,36 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             <Text style={styles.overdueText}>گذشته از موعد</Text>
           </View>
         )}
-      </TouchableOpacity>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={onDelete}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="trash-outline" size={20} color={colors.error} />
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={onDelete}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="trash-outline" size={20} color={colors.error} />
+        </TouchableOpacity>
+      </GlassCard>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: 12,
     marginBottom: spacing.sm,
+  },
+  card: {
+    flex: 1,
+    flexDirection: 'row',
+    borderRadius: 16,
     overflow: 'hidden',
     borderLeftWidth: 4,
     borderLeftColor: colors.primary,
+    ...shadows.glass,
   },
   overdueContainer: {
     borderLeftColor: colors.error,
-    backgroundColor: colors.surfaceVariant,
   },
   content: {
     flex: 1,
@@ -226,9 +263,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.md,
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.glass,
     borderLeftWidth: 1,
-    borderLeftColor: colors.border,
+    borderLeftColor: colors.glassBorder,
   },
   categoryBadge: {
     flexDirection: 'row',
@@ -237,10 +274,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     paddingVertical: 2,
     borderRadius: 12,
-    backgroundColor: colors.surfaceVariant,
+    backgroundColor: colors.glass,
     marginTop: spacing.xs,
     marginBottom: spacing.xs,
     gap: spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.glassBorder,
   },
   categoryDot: {
     width: 8,

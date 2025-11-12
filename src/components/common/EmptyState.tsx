@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { colors, typography, spacing } from '../../theme';
+import { GlassCard } from './GlassCard';
 
 interface EmptyStateProps {
   title: string;
@@ -10,11 +12,13 @@ interface EmptyStateProps {
 
 export const EmptyState: React.FC<EmptyStateProps> = ({ title, message, icon }) => {
   return (
-    <View style={styles.container}>
-      {icon && <View style={styles.iconContainer}>{icon}</View>}
-      <Text style={styles.title}>{title}</Text>
-      {message && <Text style={styles.message}>{message}</Text>}
-    </View>
+    <Animated.View style={styles.container} entering={FadeIn.duration(500)}>
+      <GlassCard intensity="light" style={styles.card}>
+        {icon && <View style={styles.iconContainer}>{icon}</View>}
+        <Text style={styles.title}>{title}</Text>
+        {message && <Text style={styles.message}>{message}</Text>}
+      </GlassCard>
+    </Animated.View>
   );
 };
 
@@ -24,6 +28,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
+  },
+  card: {
+    padding: spacing.xl,
+    alignItems: 'center',
+    minWidth: 200,
   },
   iconContainer: {
     marginBottom: spacing.md,
