@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { Platform, View, ActivityIndicator, StyleSheet } from 'react-native';
-import { AppNavigator } from './src/navigation/AppNavigator';
+import { Platform, View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
@@ -9,114 +8,89 @@ import { colors } from './src/theme';
 import { ErrorBoundary } from './src/components/common/ErrorBoundary';
 import { logger } from './src/utils/logger';
 
+// Lazy load AppNavigator to prevent crash on import
+let AppNavigatorComponent: React.ComponentType | null = null;
+
+const loadAppNavigator = async () => {
+  try {
+    const module = await import('./src/navigation/AppNavigator');
+    AppNavigatorComponent = module.AppNavigator;
+    return true;
+  } catch (error) {
+    logger.error('Error loading AppNavigator', error as Error);
+    return false;
+  }
+};
+
 export default function App() {
   const [isInitialized, setIsInitialized] = useState(false);
+  const [navigatorReady, setNavigatorReady] = useState(false);
 
   useEffect(() => {
-    logger.info('App started', { platform: Platform.OS, isDev: __DEV__ });
+    // Initialize immediately - don't wait for anything
+    setIsInitialized(true);
     
-    // Initialize app with comprehensive error handling
-    // Show UI immediately, initialize everything in background
-    const initializeApp = async () => {
+    // Load navigator asynchronously
+    loadAppNavigator().then((success) => {
+      if (success) {
+        setNavigatorReady(true);
+      } else {
+        // Even if navigator fails, show something
+        setNavigatorReady(true);
+      }
+    });
+
+    // Initialize everything else in background - don't block UI
+    setTimeout(async () => {
       try {
-        logger.debug('Starting app initialization...');
+        logger.info('App started', { platform: Platform.OS, isDev: __DEV__ });
         
-        // Mark as initialized immediately to show UI
-        // This prevents blocking the UI thread
-        setIsInitialized(true);
-        
-        // Initialize everything in background with delays
+        // Initialize database in background (non-blocking)
         setTimeout(async () => {
           try {
-            // Delay to ensure UI is rendered first
-            await new Promise((resolve) => setTimeout(resolve, 500));
+            const { initializeDatabase } = await import('./src/database/database');
+            const db = await initializeDatabase();
             
-            logger.debug('Initializing database...');
-            
-            // Import and initialize database lazily
-            try {
-              const { initializeDatabase } = await import('./src/database/database');
-              const db = await initializeDatabase();
+            if (db) {
+              logger.info('Database initialized');
               
-              if (!db) {
-                logger.warn('Database initialization failed, app will continue with limited functionality');
-              } else {
-                logger.info('Database initialized successfully');
-                
-                // Initialize repositories after database is ready
-                setTimeout(async () => {
-                  try {
-                    const { CategoryRepository } = await import('./src/repositories/CategoryRepository');
-                    const { SettingsRepository } = await import('./src/repositories/SettingsRepository');
-                    
-                    logger.debug('Initializing repositories...');
-                    
-                    const initPromises = [
-                      CategoryRepository.initializeDefaultCategories().catch((error) => {
-                        logger.error('Error initializing categories', error);
-                        return null;
-                      }),
-                      SettingsRepository.initializeDefaultSettings().catch((error) => {
-                        logger.error('Error initializing settings', error);
-                        return null;
-                      }),
-                    ];
-
-                    await Promise.race([
-                      Promise.allSettled(initPromises),
-                      new Promise((resolve) => setTimeout(resolve, 5000)),
-                    ]).catch((error) => {
-                      logger.error('Initialization timeout or error', error);
-                    });
-
-                    logger.info('Repository initialization completed');
-                  } catch (error) {
-                    logger.error('Error initializing repositories', error);
-                  }
-                }, 1000);
-              }
-            } catch (error) {
-              logger.error('Error importing database module', error);
-            }
-            
-            // Initialize notifications separately with delay
-            if (Platform.OS !== 'web') {
+              // Initialize repositories in background
               setTimeout(async () => {
                 try {
-                  const { notificationService } = await import('./src/services/NotificationService');
-                  logger.debug('Setting up notifications...');
-                  await notificationService.requestPermissions().catch((error) => {
-                    logger.warn('Error requesting notification permissions', error);
-                  });
-                  logger.info('Notification permissions requested');
+                  const { CategoryRepository } = await import('./src/repositories/CategoryRepository');
+                  const { SettingsRepository } = await import('./src/repositories/SettingsRepository');
+                  
+                  await Promise.allSettled([
+                    CategoryRepository.initializeDefaultCategories().catch(() => null),
+                    SettingsRepository.initializeDefaultSettings().catch(() => null),
+                  ]);
+                  
+                  logger.info('Repositories initialized');
                 } catch (error) {
-                  logger.error('Error setting up notifications', error);
+                  logger.error('Error initializing repositories', error as Error);
                 }
-              }, 3000);
-            } else {
-              logger.info('Notifications skipped (web platform)');
+              }, 1000);
             }
           } catch (error) {
-            logger.error('Error in background initialization', error);
-            // Don't block app - continue without database
+            logger.error('Error initializing database', error as Error);
           }
-        }, 100); // Small initial delay
-        
-      } catch (error) {
-        logger.error('Error initializing app', error);
-        // Always mark as initialized - app should start even if initialization fails
-        setIsInitialized(true);
-      }
-    };
+        }, 500);
 
-    // Wrap in try-catch to handle any synchronous errors
-    try {
-      initializeApp();
-    } catch (error) {
-      logger.error('Fatal error in App initialization', error);
-      // Always mark as initialized so UI can render
-      setIsInitialized(true);
-    }
+        // Initialize notifications in background
+        if (Platform.OS !== 'web') {
+          setTimeout(async () => {
+            try {
+              const { notificationService } = await import('./src/services/NotificationService');
+              await notificationService.requestPermissions().catch(() => null);
+            } catch (error) {
+              logger.error('Error setting up notifications', error as Error);
+            }
+          }, 2000);
+        }
+      } catch (error) {
+        logger.error('Error in background initialization', error as Error);
+      }
+    }, 100);
   }, []);
 
   const paperTheme = {
@@ -133,11 +107,12 @@ export default function App() {
     },
   };
 
-  // Show loading screen very briefly
-  if (!isInitialized) {
+  // Show loading screen while navigator loads
+  if (!isInitialized || !navigatorReady || !AppNavigatorComponent) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>در حال بارگذاری...</Text>
       </View>
     );
   }
@@ -148,7 +123,7 @@ export default function App() {
         <BottomSheetModalProvider>
           <PaperProvider theme={paperTheme}>
             <StatusBar style="light" />
-            <AppNavigator />
+            <AppNavigatorComponent />
           </PaperProvider>
         </BottomSheetModalProvider>
       </GestureHandlerRootView>
@@ -162,5 +137,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.textSecondary,
+    fontFamily: 'System',
   },
 });
